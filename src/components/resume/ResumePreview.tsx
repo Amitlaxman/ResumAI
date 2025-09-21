@@ -14,6 +14,12 @@ interface ResumePreviewProps {
   latexContent: string;
 }
 
+declare global {
+  interface Window {
+    latexjs: any;
+  }
+}
+
 export default function ResumePreview({ latexContent }: ResumePreviewProps) {
   const [pdf, setPdf] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -25,21 +31,20 @@ export default function ResumePreview({ latexContent }: ResumePreviewProps) {
       setLoading(true);
       setError(null);
       try {
-        if (!(window as any).latexjs) {
+        if (!window.latexjs) {
             setError("latex.js library not loaded.");
             setLoading(false);
             return;
         }
         
-        const generator = new (window as any).latexjs.default();
-        const doc = generator.parse(latexContent, {
-          macros: {},
+        const generator = new window.latexjs.HtmlGenerator({ hyphenate: false });
+        const doc = generator.parse(latexContent);
+        
+        const pdfBlob = await new Promise((resolve, reject) => {
+          doc.getPDF('blob').then(resolve).catch(reject);
         });
-        const pdfBlob = await doc.render({
-          format: 'pdf',
-          output: 'blob',
-        });
-        setPdf(URL.createObjectURL(pdfBlob));
+
+        setPdf(URL.createObjectURL(pdfBlob as Blob));
       } catch (e: any) {
         setError("Error rendering PDF: " + e.message);
         setPdf(null);
