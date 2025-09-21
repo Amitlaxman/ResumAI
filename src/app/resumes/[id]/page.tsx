@@ -6,8 +6,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
-import latex from 'latex.js';
-import { Document, Page, pdfjs } from 'react-pdf';
+import dynamic from 'next/dynamic';
 
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 import 'react-pdf/dist/esm/Page/TextLayer.css';
@@ -21,7 +20,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Loader2, Save, Download, ArrowLeft } from 'lucide-react';
 import type { Resume } from '@/types';
 
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+const ResumePreview = dynamic(() => import('@/components/resume/ResumePreview'), {
+  ssr: false,
+  loading: () => <div className="h-full flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+});
 
 const resumeSchema = z.object({
   title: z.string().min(5, { message: 'Title must be at least 5 characters.' }),
@@ -29,71 +31,6 @@ const resumeSchema = z.object({
 });
 
 type ResumeFormValues = z.infer<typeof resumeSchema>;
-
-function ResumePreview({ latexContent }: { latexContent: string }) {
-  const [pdf, setPdf] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [numPages, setNumPages] = useState<number | null>(null);
-
-  useEffect(() => {
-    const generatePdf = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const generator = latex.generator();
-        const doc = latex.parse(latexContent, { generator });
-        const pdfBlob = await doc.render({
-          format: 'pdf',
-          output: 'blob',
-        });
-        setPdf(URL.createObjectURL(pdfBlob));
-      } catch (e: any) {
-        setError("Error rendering PDF: " + e.message);
-        setPdf(null);
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    // Debounce PDF generation
-    const handler = setTimeout(() => {
-        if(latexContent) {
-            generatePdf();
-        }
-    }, 500);
-
-    return () => {
-        clearTimeout(handler);
-    };
-  }, [latexContent]);
-
-  function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
-    setNumPages(numPages);
-  }
-
-  return (
-    <Card className="h-full flex flex-col">
-      <CardHeader>
-        <CardTitle className="font-headline">Preview</CardTitle>
-        <CardDescription>A live preview of your rendered resume.</CardDescription>
-      </CardHeader>
-      <CardContent className="flex-grow bg-muted/50 rounded-b-lg p-4 overflow-auto flex items-center justify-center">
-        {loading && <Loader2 className="h-8 w-8 animate-spin text-primary" />}
-        {error && <div className="text-destructive text-sm p-4 bg-destructive/10 rounded-md">{error}</div>}
-        {pdf && !error && (
-           <Document file={pdf} onLoadSuccess={onDocumentLoadSuccess} loading={<Loader2 className="h-8 w-8 animate-spin text-primary" />}>
-             {Array.from(new Array(numPages), (el, index) => (
-                <Page key={`page_${index + 1}`} pageNumber={index + 1} renderTextLayer={false} />
-              ))}
-          </Document>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
 
 export default function ResumePage() {
   const { user, loading } = useAuth();
