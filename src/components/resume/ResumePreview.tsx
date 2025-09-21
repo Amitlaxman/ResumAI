@@ -2,14 +2,13 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import latex from 'latex.js';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 import 'react-pdf/dist/esm/Page/TextLayer.css';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
 
 interface ResumePreviewProps {
   latexContent: string;
@@ -26,6 +25,12 @@ export default function ResumePreview({ latexContent }: ResumePreviewProps) {
       setLoading(true);
       setError(null);
       try {
+        if (!(window as any).latexjs) {
+            setError("latex.js library not loaded.");
+            setLoading(false);
+            return;
+        }
+        
         const generator = new (window as any).latexjs.default();
         const doc = generator.parse(latexContent, {
           macros: {},
@@ -44,6 +49,7 @@ export default function ResumePreview({ latexContent }: ResumePreviewProps) {
       }
     };
     
+    // Debounce PDF generation
     const handler = setTimeout(() => {
         if(latexContent) {
             generatePdf();

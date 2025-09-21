@@ -30,15 +30,10 @@ const nextConfig = {
     ],
   },
   webpack: (config, { isServer }) => {
-    if (!isServer) {
-      config.resolve.fallback = {
-        fs: false,
-        stream: false,
-        path: false,
-        util: false,
-      };
+    if (isServer) {
+      config.externals.push('canvas');
     }
-    return config;
+    return config
   },
 };
 
