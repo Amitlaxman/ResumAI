@@ -1,3 +1,113 @@
+import Image from 'next/image';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CheckCircle, Bot, User, Edit } from 'lucide-react';
+
+const features = [
+  {
+    icon: <User className="h-10 w-10 text-primary" />,
+    title: 'Profile Management',
+    description: 'Easily create and manage your professional profile. Your information is securely stored and ready to use.',
+  },
+  {
+    icon: <Bot className="h-10 w-10 text-primary" />,
+    title: 'AI-Powered Generation',
+    description: 'Our advanced AI takes your profile and a job description to craft a tailored, high-impact resume in seconds.',
+  },
+  {
+    icon: <Edit className="h-10 w-10 text-primary" />,
+    title: 'Edit & Customize',
+    description: 'Fine-tune your generated resume. You get full access to the LaTeX code for ultimate customization.',
+  },
+];
+
 export default function Home() {
-  return <></>;
+  return (
+    <div className="flex flex-col items-center">
+      {/* Hero Section */}
+      <section className="w-full py-20 md:py-32 bg-card border-b">
+        <div className="container mx-auto px-4 md:px-6 text-center">
+          <h1 className="font-headline text-4xl md:text-6xl font-bold tracking-tighter mb-4 text-primary">
+            ResumAI
+          </h1>
+          <p className="max-w-2xl mx-auto text-lg md:text-xl text-muted-foreground mb-8">
+            Craft the perfect resume for your dream job. Let our AI-powered engine tailor your experience to any role.
+          </p>
+          <div className="space-x-4">
+            <Button asChild size="lg" className="bg-accent hover:bg-accent/90 text-accent-foreground">
+              <Link href="/signup">Get Started for Free</Link>
+            </Button>
+            <Button asChild size="lg" variant="outline">
+              <Link href="/login">Login</Link>
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="w-full py-20 md:py-24">
+        <div className="container mx-auto px-4 md:px-6">
+          <h2 className="font-headline text-3xl md:text-4xl font-bold text-center mb-12">
+            Why Choose ResumAI?
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {features.map((feature, index) => (
+              <Card key={index} className="text-center hover:shadow-lg transition-shadow duration-300">
+                <CardHeader className="items-center">
+                  {feature.icon}
+                  <CardTitle className="font-headline mt-4">{feature.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">{feature.description}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+      
+      {/* How it works */}
+      <section className="w-full py-20 md:py-24 bg-card border-t">
+        <div className="container mx-auto px-4 md:px-6 grid md:grid-cols-2 gap-16 items-center">
+          <div>
+            <h2 className="font-headline text-3xl md:text-4xl font-bold mb-6">Simple Steps to a Perfect Resume</h2>
+            <ul className="space-y-6">
+              <li className="flex items-start">
+                <CheckCircle className="h-6 w-6 text-primary mt-1 mr-4 flex-shrink-0" />
+                <div>
+                  <h3 className="font-semibold text-lg">1. Build Your Profile</h3>
+                  <p className="text-muted-foreground">Fill in your professional details—name, contact info, headline, and a summary of your skills and experience.</p>
+                </div>
+              </li>
+              <li className="flex items-start">
+                <CheckCircle className="h-6 w-6 text-primary mt-1 mr-4 flex-shrink-0" />
+                <div>
+                  <h3 className="font-semibold text-lg">2. Provide a Job Description</h3>
+                  <p className="text-muted-foreground">Paste the description of the job you're applying for. Our AI will analyze it for keywords and requirements.</p>
+                </div>
+              </li>
+              <li className="flex items-start">
+                <CheckCircle className="h-6 w-6 text-primary mt-1 mr-4 flex-shrink-0" />
+                <div>
+                  <h3 className="font-semibold text-lg">3. Generate & Download</h3>
+                  <p className="text-muted-foreground">With one click, generate a tailored resume. Review, edit the LaTeX if you wish, and download your file.</p>
+                </div>
+              </li>
+            </ul>
+          </div>
+          <div className="rounded-lg overflow-hidden shadow-2xl">
+            <Image
+              src="https://picsum.photos/seed/resume-app/600/400"
+              alt="Resume editing interface"
+              width={600}
+              height={400}
+              className="w-full h-auto"
+              data-ai-hint="resume editing"
+            />
+          </div>
+        </div>
+      </section>
+    </div>
+  );
 }

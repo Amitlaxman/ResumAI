@@ -1,3 +1,10 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "1",
+      "description": "Resume editing interface on a laptop screen.",
+      "imageUrl": "https://picsum.photos/seed/resume-app/600/400",
+      "imageHint": "resume editing"
+    }
+  ]
 }
