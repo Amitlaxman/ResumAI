@@ -9,6 +9,7 @@ import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { generateResumeFromProfile } from '@/ai/flows/generate-resume-from-profile';
 import { generatePdfFromLatex } from '@/ai/flows/generate-pdf-from-latex';
+import { getProfileFromFirestore, saveResumeToFirestore } from '@/lib/firestore';
 
 
 import { Button } from '@/components/ui/button';
@@ -26,54 +27,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
-import type { UserProfile } from '@/types';
+import type { UserProfile, Resume } from '@/types';
 
-
-async function generateAndSaveResumeAction(payload: {
-  profileData: string;
-  jobDescription: string;
-  title: string;
-}): Promise<{ resumeId: string; }> {
-  console.log("Generating resume for title:", payload.title);
-  
-  // 1. Generate LaTeX content
-  const { resumeContent } = await generateResumeFromProfile({
-    profileData: payload.profileData,
-    jobDescription: payload.jobDescription,
-  });
-
-  if (!resumeContent) {
-    throw new Error("AI failed to generate resume content.");
-  }
-  
-  console.log("Generated LaTeX content:", resumeContent.substring(0, 100) + '...');
-  
-  // 2. Compile LaTeX to PDF
-  const { pdfDataUri } = await generatePdfFromLatex({
-      latexContent: resumeContent,
-  });
-
-  if (!pdfDataUri) {
-      throw new Error("Failed to compile LaTeX to PDF.");
-  }
-
-  const mockResumeId = new Date().getTime().toString();
-  
-  // 3. Save everything to session storage for the next page
-  if (typeof window !== 'undefined') {
-    const newResume = {
-      id: mockResumeId,
-      title: payload.title,
-      jobDescription: payload.jobDescription,
-      latexContent: resumeContent,
-      pdfDataUri: pdfDataUri,
-      createdAt: new Date(),
-    }
-    sessionStorage.setItem(`resume-${mockResumeId}`, JSON.stringify(newResume));
-  }
-  
-  return { resumeId: mockResumeId };
-}
 
 const newResumeSchema = z.object({
   title: z.string().min(5, { message: 'Title must be at least 5 characters.' }),
@@ -108,35 +63,52 @@ export default function NewResumePage() {
     toast({ title: 'Generating your resume...', description: 'The AI is hard at work. This may take a moment.' });
     
     try {
-      // TODO: Replace with actual profile fetch from Firestore
-      const mockProfile: Omit<UserProfile, 'uid' | 'email'> = {
-        name: user.displayName || 'John Doe',
-        phone: '123-456-7890',
-        headline: 'Experienced Software Developer',
-        summary: 'A highly motivated and results-oriented software developer with over 5 years of experience in building and maintaining web applications. Proficient in JavaScript, React, and Node.js. Passionate about creating clean, efficient, and user-friendly code.',
-      };
+      const userProfile = await getProfileFromFirestore(user.uid, user.email!, user.displayName!);
 
       const profileDataString = `
-        Name: ${mockProfile.name}
-        Phone: ${mockProfile.phone}
-        Headline: ${mockProfile.headline}
-        
+        Name: ${userProfile.name}
+        Email: ${userProfile.email}
+        Phone: ${userProfile.phone}
+        Headline: ${userProfile.headline}
         Summary and Experience:
-        ${mockProfile.summary}
+        ${userProfile.summary}
       `;
       
-      const { resumeId } = await generateAndSaveResumeAction({
+      // 1. Generate LaTeX content
+      const { resumeContent } = await generateResumeFromProfile({
         profileData: profileDataString,
         jobDescription: data.jobDescription,
-        title: data.title,
       });
+
+      if (!resumeContent) {
+        throw new Error("AI failed to generate resume content.");
+      }
+      
+      // 2. Compile LaTeX to PDF
+      const { pdfDataUri } = await generatePdfFromLatex({
+          latexContent: resumeContent,
+      });
+
+      if (!pdfDataUri) {
+          throw new Error("Failed to compile LaTeX to PDF.");
+      }
+
+      // 3. Save to our mock "firestore"
+      const newResumeData = {
+          title: data.title,
+          jobDescription: data.jobDescription,
+          latexContent: resumeContent,
+          pdfDataUri: pdfDataUri,
+      }
+      // @ts-ignore
+      const newResume = await saveResumeToFirestore(newResumeData, user.uid);
 
       toast({
         title: 'Resume Generated!',
         description: 'Redirecting you to the editor...',
       });
       
-      router.push(`/resumes/${resumeId}`);
+      router.push(`/resumes/${newResume.id}`);
 
     } catch (error) {
       console.error(error);

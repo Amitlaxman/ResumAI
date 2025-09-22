@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from 'react';
@@ -9,28 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { PlusCircle, FileText, MoreHorizontal, Edit, Trash2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { Resume } from '@/types';
-
-// Mock data, replace with Firestore fetching
-const mockResumes: Resume[] = [
-  {
-    id: '1',
-    userId: 'mock-user',
-    title: 'Software Engineer at TechCorp',
-    jobDescription: 'Seeking a skilled software engineer...',
-    latexContent: '\\documentclass{article}...',
-    // @ts-ignore
-    createdAt: { toDate: () => new Date('2023-10-26T10:00:00Z') },
-  },
-  {
-    id: '2',
-    userId: 'mock-user',
-    title: 'Product Manager at Innovate Inc.',
-    jobDescription: 'Lead product development...',
-    latexContent: '\\documentclass{article}...',
-    // @ts-ignore
-    createdAt: { toDate: () => new Date('2023-10-25T14:30:00Z') },
-  },
-];
+import { getResumesFromFirestore } from '@/lib/firestore';
 
 export default function DashboardPage() {
   const { user, loading } = useAuth();
@@ -45,13 +25,17 @@ export default function DashboardPage() {
   
   useEffect(() => {
     if (user) {
-      // TODO: Replace with actual Firestore fetch
-      // const fetchResumes = async () => {
-      //   const userResumes = await getResumesFromFirestore(user.uid);
-      //   setResumes(userResumes);
-      // };
-      // fetchResumes();
-      setResumes(mockResumes);
+      const fetchResumes = async () => {
+        const userResumes = await getResumesFromFirestore(user.uid);
+        // Quick fix for createdAt type mismatch
+        const formattedResumes = userResumes.map(r => ({
+          ...r,
+          createdAt: r.createdAt.toDate ? r.createdAt.toDate() : new Date(r.createdAt as any)
+        }));
+        // @ts-ignore
+        setResumes(formattedResumes);
+      };
+      fetchResumes();
     }
   }, [user]);
 
@@ -84,7 +68,8 @@ export default function DashboardPage() {
                     <CardTitle className="hover:text-primary">
                       <Link href={`/resumes/${resume.id}`}>{resume.title}</Link>
                     </CardTitle>
-                    <CardDescription>Created on {resume.createdAt.toDate().toLocaleDateString()}</CardDescription>
+                    {/* @ts-ignore */}
+                    <CardDescription>Created on {resume.createdAt.toLocaleDateString()}</CardDescription>
                   </div>
                    <DropdownMenu>
                     <DropdownMenuTrigger asChild>

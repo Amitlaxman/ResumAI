@@ -17,6 +17,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, Save, Download, ArrowLeft } from 'lucide-react';
 import type { Resume } from '@/types';
 import { generatePdfFromLatex } from '@/ai/flows/generate-pdf-from-latex';
+import { getResumeFromFirestore, updateResumeInFirestore } from '@/lib/firestore';
+
 
 const ResumePreview = dynamic(() => import('@/components/resume/ResumePreview'), {
   ssr: false,
@@ -37,7 +39,7 @@ export default function ResumePage() {
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
-  const [resume, setResume] = useState<Omit<Resume, 'createdAt'> & { createdAt: Date } | null>(null);
+  const [resume, setResume] = useState<Resume | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isCompiling, setIsCompiling] = useState(false);
   
@@ -60,20 +62,27 @@ export default function ResumePage() {
   
   useEffect(() => {
     if (user && id) {
-      const savedResumeData = sessionStorage.getItem(`resume-${id}`);
-      if (savedResumeData) {
-        const parsedData = JSON.parse(savedResumeData);
-        parsedData.createdAt = new Date(parsedData.createdAt);
-        setResume(parsedData);
-        form.reset({
-          title: parsedData.title,
-          latexContent: parsedData.latexContent,
-          pdfDataUri: parsedData.pdfDataUri,
-        });
-      } else {
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not load resume data.' });
-        router.push('/dashboard');
-      }
+        const fetchResume = async () => {
+            const fetchedResume = await getResumeFromFirestore(id);
+            if (fetchedResume) {
+                 const formattedResume = {
+                    ...fetchedResume,
+                    // @ts-ignore
+                    createdAt: fetchedResume.createdAt.toDate ? fetchedResume.createdAt.toDate() : new Date(fetchedResume.createdAt)
+                };
+                // @ts-ignore
+                setResume(formattedResume);
+                form.reset({
+                    title: formattedResume.title,
+                    latexContent: formattedResume.latexContent,
+                    pdfDataUri: formattedResume.pdfDataUri,
+                });
+            } else {
+                toast({ variant: 'destructive', title: 'Error', description: 'Could not load resume data.' });
+                router.push('/dashboard');
+            }
+        };
+        fetchResume();
     }
   }, [user, id, form, router, toast]);
   
@@ -83,10 +92,8 @@ export default function ResumePage() {
     toast({ title: 'Saving resume...' });
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      const updatedResume = { ...resume, ...data };
-      sessionStorage.setItem(`resume-${id}`, JSON.stringify(updatedResume));
-      setResume(updatedResume);
+      await updateResumeInFirestore(id, data);
+      setResume(prev => prev ? { ...prev, ...data } : null);
       
       toast({ title: 'Resume Saved!', description: 'Your changes have been saved.' });
     } catch (error) {
@@ -106,6 +113,8 @@ export default function ResumePage() {
           throw new Error("The compilation service returned an empty result.");
         }
         form.setValue('pdfDataUri', pdfDataUri);
+        await updateResumeInFirestore(id, { pdfDataUri });
+        setResume(prev => prev ? { ...prev, pdfDataUri } : null);
         toast({ title: 'PDF Recompiled!', description: 'The preview has been updated.' });
     } catch (error: any) {
         console.error(error);
@@ -148,10 +157,10 @@ export default function ResumePage() {
   };
   
   if (loading || !user) {
-    return <div className="container mx-auto p-4 md:p-8"><p>Loading...</p></div>;
+    return <div className="container mx-auto p-4 md:p-8 flex justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
   if (!resume) {
-    return <div className="container mx-auto p-4 md:p-8"><p>Loading resume...</p></div>;
+    return <div className="container mx-auto p-4 md:p-8 flex justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
 
   return (

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from 'react';
@@ -23,6 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 import type { UserProfile } from '@/types';
+import { getProfileFromFirestore, updateProfileInFirestore } from '@/lib/firestore';
 
 const profileSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -60,27 +62,14 @@ export default function ProfilePage() {
   
   useEffect(() => {
     if (user) {
-      // TODO: Replace with actual Firestore fetch
-      // const fetchProfile = async () => {
-      //   const userProfile = await getProfileFromFirestore(user.uid);
-      //   if (userProfile) {
-      //     setProfile(userProfile);
-      //     form.reset(userProfile);
-      //   } else {
-      //     form.reset({ email: user.email || '', name: user.displayName || '' });
-      //   }
-      // };
-      // fetchProfile();
-      const mockProfile: UserProfile = {
-        uid: user.uid,
-        name: user.displayName || 'John Doe',
-        email: user.email || 'john.doe@example.com',
-        phone: '123-456-7890',
-        headline: 'Experienced Software Developer',
-        summary: 'A highly motivated and results-oriented software developer with over 5 years of experience in building and maintaining web applications. Proficient in JavaScript, React, and Node.js. Passionate about creating clean, efficient, and user-friendly code.',
+      const fetchProfile = async () => {
+        const userProfile = await getProfileFromFirestore(user.uid, user.email!, user.displayName!);
+        if (userProfile) {
+          setProfile(userProfile);
+          form.reset(userProfile);
+        }
       };
-      setProfile(mockProfile);
-      form.reset(mockProfile);
+      fetchProfile();
     }
   }, [user, form]);
   
@@ -90,9 +79,7 @@ export default function ProfilePage() {
     toast({ title: 'Saving profile...', description: 'Please wait.' });
 
     try {
-      // TODO: Replace with actual Firestore update
-      // await updateProfileInFirestore(user.uid, data);
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate network delay
+      await updateProfileInFirestore(user.uid, data);
       setProfile(prev => prev ? { ...prev, ...data } : null);
       toast({
         title: 'Profile Updated!',
@@ -109,8 +96,8 @@ export default function ProfilePage() {
     }
   }
 
-  if (loading || !user) {
-    return <div className="container mx-auto p-4 md:p-8"><p>Loading...</p></div>;
+  if (loading || !user || !profile) {
+    return <div className="container mx-auto p-4 md:p-8 flex justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
   
   return (
