@@ -1,5 +1,4 @@
 
-
 'use server';
 /**
  * @fileOverview Generates a resume from profile data and a job description.
@@ -35,6 +34,7 @@ const prompt = ai.definePrompt({
   prompt: `You are an expert resume writer. Your task is to generate a professional resume in LaTeX format.
 You will be provided with a base LaTeX template and the user's profile data and a job description.
 Your response should ONLY contain the LaTeX code for the resume, starting with \\documentclass and ending with \\end{document}.
+Do not wrap the LaTeX code in markdown fences.
 
 Here is the LaTeX template you MUST use. Pay close attention to the available commands like \\resumeheader, \\resumecontact, \\section, \\entry, \\singlelineentry, \\desc, and \\bullets.
 
@@ -46,6 +46,9 @@ Make sure to replace the placeholder content in the template with the user's act
 The user's contact details (email, phone, website, etc.) should go in the \\resumecontact section.
 The user's name should go in the \\resumeheader section.
 The user's professional summary, skills, experience, education, and projects should be organized into appropriate sections using the \\section, \\entry, \\singlelineentry, \\desc, and \\bullets commands.
+
+The "Summary" section should be a professional summary tailored for the job description.
+The "Experience" section should be adapted from the user's summary/experience, highlighting the most relevant points for the job description.
 
 User Profile Data:
 {{{profileData}}}

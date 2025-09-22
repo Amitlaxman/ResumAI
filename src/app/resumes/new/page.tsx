@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from 'react';
@@ -7,6 +8,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { generateResumeFromProfile } from '@/ai/flows/generate-resume-from-profile';
+import { generatePdfFromLatex } from '@/ai/flows/generate-pdf-from-latex';
+
 
 import { Button } from '@/components/ui/button';
 import {
@@ -25,7 +28,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Loader2 } from 'lucide-react';
 import type { UserProfile } from '@/types';
 
-// Mock server action to avoid actual DB write in this step
+
 async function generateAndSaveResumeAction(payload: {
   profileData: string;
   jobDescription: string;
@@ -33,26 +36,37 @@ async function generateAndSaveResumeAction(payload: {
 }): Promise<{ resumeId: string; }> {
   console.log("Generating resume for title:", payload.title);
   
+  // 1. Generate LaTeX content
   const { resumeContent } = await generateResumeFromProfile({
     profileData: payload.profileData,
     jobDescription: payload.jobDescription,
   });
+
+  if (!resumeContent) {
+    throw new Error("AI failed to generate resume content.");
+  }
   
-  // In a real app, you would save this to Firestore and get a real ID.
-  // The resume content would be saved in a new document.
-  // For now, we just return a mock ID.
   console.log("Generated LaTeX content:", resumeContent.substring(0, 100) + '...');
+  
+  // 2. Compile LaTeX to PDF
+  const { pdfDataUri } = await generatePdfFromLatex({
+      latexContent: resumeContent,
+  });
+
+  if (!pdfDataUri) {
+      throw new Error("Failed to compile LaTeX to PDF.");
+  }
+
   const mockResumeId = new Date().getTime().toString();
   
-  // You would also want to store the resume content somewhere the next page can access it
-  // e.g. sessionStorage, or by actually saving to DB and fetching on the next page.
-  // For this demo, we'll use sessionStorage.
+  // 3. Save everything to session storage for the next page
   if (typeof window !== 'undefined') {
     const newResume = {
       id: mockResumeId,
       title: payload.title,
       jobDescription: payload.jobDescription,
       latexContent: resumeContent,
+      pdfDataUri: pdfDataUri,
       createdAt: new Date(),
     }
     sessionStorage.setItem(`resume-${mockResumeId}`, JSON.stringify(newResume));

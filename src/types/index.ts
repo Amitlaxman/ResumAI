@@ -15,5 +15,6 @@ export interface Resume {
   title: string;
   jobDescription: string;
   latexContent: string;
+  pdfDataUri?: string;
   createdAt: Timestamp;
 }

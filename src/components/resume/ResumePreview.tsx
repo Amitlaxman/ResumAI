@@ -1,33 +1,83 @@
 
-
 "use client";
 
-import React, { forwardRef, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react';
-import 'katex/dist/katex.min.css';
-import Latex from "react-latex-next";
+import { Loader2, AlertTriangle } from 'lucide-react';
 
 interface ResumePreviewProps {
-  latexContent: string;
+  pdfDataUri?: string;
 }
 
-const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ latexContent }, ref) => {
+const ResumePreview: React.FC<ResumePreviewProps> = ({ pdfDataUri }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [loading, setLoading] = useState(true);
-
-  // Use a separate ref for the content that will be downloaded as PDF
-  const pdfContentRef = useRef<HTMLDivElement>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // We'll use a timeout to give KaTeX time to render.
-    // A more robust solution might involve a callback from the Latex component
-    // if it provided one.
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 1000); // Give it a second to render.
+    let pdfDoc: any = null;
+    let isCancelled = false;
+  
+    const renderPdf = async () => {
+      setLoading(true);
+      setError(null);
 
-    return () => clearTimeout(timer);
-  }, [latexContent]);
+      if (!pdfDataUri) {
+        setError("No PDF data to display.");
+        setLoading(false);
+        return;
+      }
+      
+      try {
+        await (window as any).pdfjsLibReady.promise;
+        const pdfjsLib = (window as any).pdfjsLib;
+
+        const base64Data = pdfDataUri.split(',')[1];
+        const pdfData = atob(base64Data);
+        const uint8Array = new Uint8Array(pdfData.length);
+        for (let i = 0; i < pdfData.length; i++) {
+          uint8Array[i] = pdfData.charCodeAt(i);
+        }
+        
+        const loadingTask = pdfjsLib.getDocument({ data: uint8Array });
+        pdfDoc = await loadingTask.promise;
+
+        if (isCancelled) return;
+
+        const page = await pdfDoc.getPage(1);
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        const viewport = page.getViewport({ scale: 2 });
+        const context = canvas.getContext('2d');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        const renderContext = {
+          canvasContext: context,
+          viewport: viewport
+        };
+        await page.render(renderContext).promise;
+        
+        setLoading(false);
+      } catch (err: any) {
+        if (!isCancelled) {
+          console.error('Failed to render PDF', err);
+          setError(err.message || 'An error occurred while rendering the PDF.');
+          setLoading(false);
+        }
+      }
+    };
+
+    renderPdf();
+
+    return () => {
+      isCancelled = true;
+      if (pdfDoc) {
+        // pdfDoc.destroy();
+      }
+    };
+  }, [pdfDataUri]);
 
   return (
     <Card className="h-full flex flex-col">
@@ -35,19 +85,19 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ latexCon
         <CardTitle className="font-headline">Preview</CardTitle>
         <CardDescription>A live preview of your rendered resume.</CardDescription>
       </CardHeader>
-      <CardContent className="flex-grow bg-muted/50 rounded-b-lg p-4 overflow-auto">
-        {loading && <div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}
-        <div ref={ref} className={loading ? 'hidden' : ''}>
-          <div className="bg-white p-8 shadow-lg" ref={pdfContentRef}>
-            <Latex>{latexContent}</Latex>
+      <CardContent className="flex-grow bg-muted/50 rounded-b-lg p-4 overflow-auto flex items-center justify-center">
+        {loading && <Loader2 className="h-8 w-8 animate-spin text-primary" />}
+        {error && !loading && (
+          <div className="text-center text-destructive">
+            <AlertTriangle className="mx-auto h-12 w-12" />
+            <h3 className="mt-4 text-lg font-medium">Preview Failed</h3>
+            <p className="mt-1 text-sm">{error}</p>
           </div>
-        </div>
+        )}
+        <canvas ref={canvasRef} className={`${loading || error ? 'hidden' : 'block'} max-w-full h-auto shadow-lg`} />
       </CardContent>
     </Card>
   );
-});
-
-ResumePreview.displayName = "ResumePreview";
+};
 
 export default ResumePreview;
-

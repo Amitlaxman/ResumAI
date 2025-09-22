@@ -1,5 +1,4 @@
 
-
 import type { Metadata } from "next";
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { Header } from "@/components/layout/header";
@@ -27,13 +26,23 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro&display=swap" rel="stylesheet" />
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" integrity="sha384-KiK6/LqSooU13iT+a3m2b2lQ2+i43x9ROeH9vU6whux282c/1S1V4D5G3x9hI3vB" crossOrigin="anonymous" />
-        <script src="https://cdn.jsdelivr.net/npm/latex.js@0.12.1/dist/latex.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js" async></script>
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
+              if (typeof Promise.withResolvers === 'undefined') {
+                Promise.withResolvers = function () {
+                  let resolve, reject;
+                  const promise = new Promise((res, rej) => {
+                    resolve = res;
+                    reject = rej;
+                  });
+                  return { promise, resolve, reject };
+                };
+              }
+              window.pdfjsLibReady = Promise.withResolvers();
+              window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
+              window.pdfjsLib.ready.then(window.pdfjsLibReady.resolve);
             `,
           }}
         ></script>
@@ -49,4 +58,3 @@ export default function RootLayout({
     </html>
   );
 }
-

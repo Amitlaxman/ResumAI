@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useEffect, useState, useRef } from 'react';
@@ -15,11 +14,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Save, Download, ArrowLeft } from 'lucide-react';
 import type { Resume } from '@/types';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import { generatePdfFromLatex } from '@/ai/flows/generate-pdf-from-latex';
 
 const ResumePreview = dynamic(() => import('@/components/resume/ResumePreview'), {
   ssr: false,
@@ -30,6 +27,7 @@ const ResumePreview = dynamic(() => import('@/components/resume/ResumePreview'),
 const resumeSchema = z.object({
   title: z.string().min(5, { message: 'Title must be at least 5 characters.' }),
   latexContent: z.string().min(1, { message: 'LaTeX content cannot be empty.' }),
+  pdfDataUri: z.string().optional(),
 });
 
 type ResumeFormValues = z.infer<typeof resumeSchema>;
@@ -41,7 +39,7 @@ export default function ResumePage() {
   const { toast } = useToast();
   const [resume, setResume] = useState<Omit<Resume, 'createdAt'> & { createdAt: Date } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const previewRef = useRef<HTMLDivElement>(null);
+  const [isCompiling, setIsCompiling] = useState(false);
   
   const id = params.id as string;
 
@@ -50,6 +48,7 @@ export default function ResumePage() {
     defaultValues: {
       title: '',
       latexContent: '',
+      pdfDataUri: '',
     },
   });
 
@@ -61,7 +60,6 @@ export default function ResumePage() {
   
   useEffect(() => {
     if (user && id) {
-      // For demo, we retrieve from sessionStorage. In a real app, fetch from Firestore.
       const savedResumeData = sessionStorage.getItem(`resume-${id}`);
       if (savedResumeData) {
         const parsedData = JSON.parse(savedResumeData);
@@ -70,64 +68,14 @@ export default function ResumePage() {
         form.reset({
           title: parsedData.title,
           latexContent: parsedData.latexContent,
+          pdfDataUri: parsedData.pdfDataUri,
         });
       } else {
-        // Mock data if not in session storage for direct navigation
-        const mockResume = {
-            id,
-            userId: user.uid,
-            title: 'Sample Resume',
-            jobDescription: 'A sample job description.',
-            latexContent: `\\documentclass[a4paper,10pt]{article}
-\\usepackage{amsmath}
-\\usepackage{amssymb}
-\\usepackage{graphicx}
-\\usepackage{url}
-\\usepackage[usenames,dvipsnames]{xcolor}
-\\usepackage[left=0.75in,top=0.6in,right=0.75in,bottom=0.6in]{geometry}
-\\usepackage{enumitem}
-
-\\urlstyle{same}
-
-\\raggedbottom
-\\raggedright
-\\setlength{\\tabcolsep}{0in}
-
-\\newlist{innerlist}{itemize}{1}
-\\setlist[innerlist]{label=\\textbullet, leftmargin=*, nosep, partopsep=0pt, topsep=0pt}
-
-\\section*{John Doe}
-\\begin{center}
-    youremail@email.com | 555-555-5555 | yourwebsite.com \\\\
-    linkedin.com/in/yourusername | github.com/yourusername
-\\end{center}
-
-\\section*{Summary}
-A highly skilled and motivated software engineer with experience in building and deploying web applications.
-
-\\section*{Experience}
-\\textbf{Software Engineer} \\hfill Sometown, USA \\\\
-\\textit{Some Company} \\hfill Jan 2020 - Present
-\\begin{itemize}
-    \\item Did something cool.
-    \\item Did another cool thing.
-\\end{itemize}
-
-\\section*{Education}
-\\textbf{Some University} \\hfill City, ST \\\\
-B.S. in Computer Science \\hfill May 2019
-
-`,
-            createdAt: new Date(),
-        };
-        setResume(mockResume);
-        form.reset({
-          title: mockResume.title,
-          latexContent: mockResume.latexContent,
-        });
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not load resume data.' });
+        router.push('/dashboard');
       }
     }
-  }, [user, id, form]);
+  }, [user, id, form, router, toast]);
   
   async function onSave(data: ResumeFormValues) {
     if (!user || !resume) return;
@@ -135,7 +83,6 @@ B.S. in Computer Science \\hfill May 2019
     toast({ title: 'Saving resume...' });
 
     try {
-      // In a real app, update Firestore document for resume with id
       await new Promise(resolve => setTimeout(resolve, 1000));
       const updatedResume = { ...resume, ...data };
       sessionStorage.setItem(`resume-${id}`, JSON.stringify(updatedResume));
@@ -149,28 +96,39 @@ B.S. in Computer Science \\hfill May 2019
     }
   }
 
+  const handleRecompile = async () => {
+    setIsCompiling(true);
+    toast({ title: 'Recompiling PDF...', description: 'Please wait.' });
+    try {
+        const latexContent = form.getValues('latexContent');
+        const { pdfDataUri } = await generatePdfFromLatex({ latexContent });
+        if (!pdfDataUri) {
+          throw new Error("The compilation service returned an empty result.");
+        }
+        form.setValue('pdfDataUri', pdfDataUri);
+        toast({ title: 'PDF Recompiled!', description: 'The preview has been updated.' });
+    } catch (error: any) {
+        console.error(error);
+        toast({ variant: 'destructive', title: 'Compilation Failed', description: error.message || 'Could not recompile the PDF.' });
+    } finally {
+        setIsCompiling(false);
+    }
+  }
+
   const handleDownloadPdf = () => {
-    // The ref is now attached to an inner div inside ResumePreview
-    const input = (previewRef.current as any)?.querySelector('.bg-white');
-    if (input) {
-      html2canvas(input, { scale: 2 }).then((canvas) => {
-        const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = pdf.internal.pageSize.getHeight();
-        const imgWidth = canvas.width;
-        const imgHeight = canvas.height;
-        const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
-        const imgX = (pdfWidth - imgWidth * ratio) / 2;
-        const imgY = 0;
-        pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
-        pdf.save(`${form.getValues('title').replace(/ /g, '_').toLowerCase()}.pdf`);
-      });
+    const pdfDataUri = form.getValues('pdfDataUri');
+    if (pdfDataUri) {
+      const link = document.createElement('a');
+      link.href = pdfDataUri;
+      link.download = `${form.getValues('title').replace(/ /g, '_').toLowerCase()}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     } else {
        toast({
         variant: "destructive",
         title: "Error",
-        description: "Could not find the resume content to download.",
+        description: "No PDF data available to download.",
       });
     }
   };
@@ -224,9 +182,13 @@ B.S. in Computer Science \\hfill May 2019
               <Button type="button" variant="outline" onClick={handleDownloadPdf}>
                 <Download className="mr-2 h-4 w-4" /> Download PDF
               </Button>
+               <Button type="button" onClick={handleRecompile} disabled={isCompiling}>
+                {isCompiling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Recompile PDF
+              </Button>
               <Button type="submit" disabled={isSaving}>
                 {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                <Save className="mr-2 h-4 w-4" /> Save
+                <Save className="mr-2 h-4 w-4" /> Save All
               </Button>
             </div>
           </div>
@@ -250,7 +212,7 @@ B.S. in Computer Science \\hfill May 2019
               )}
             />
             
-            <ResumePreview ref={previewRef} latexContent={form.watch('latexContent')} />
+            <ResumePreview pdfDataUri={form.watch('pdfDataUri')} />
 
           </div>
         </form>
@@ -258,4 +220,3 @@ B.S. in Computer Science \\hfill May 2019
     </div>
   );
 }
-
