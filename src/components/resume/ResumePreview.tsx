@@ -1,14 +1,8 @@
-
 "use client";
 
-import { useEffect, useState } from 'react';
-import { Document, Page, pdfjs } from 'react-pdf';
-import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
-import 'react-pdf/dist/esm/Page/TextLayer.css';
+import { useEffect, useState, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
-
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
 
 interface ResumePreviewProps {
   latexContent: string;
@@ -21,55 +15,56 @@ declare global {
 }
 
 export default function ResumePreview({ latexContent }: ResumePreviewProps) {
-  const [pdf, setPdf] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [numPages, setNumPages] = useState<number | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !latexContent) {
-      return;
+    if (typeof window === 'undefined' || !window.latexjs) {
+        setError("latex.js library not loaded. Please refresh the page.");
+        return;
+    }
+    
+    if (!latexContent) {
+        if(iframeRef.current?.contentWindow) {
+            iframeRef.current.contentWindow.document.body.innerHTML = "";
+        }
+        return;
     }
 
     const generatePdf = () => {
       setLoading(true);
       setError(null);
       try {
-        if (!window.latexjs) {
-            setError("latex.js library not loaded.");
+        const generator = window.latexjs.parse(latexContent, {generator: new window.latexjs.generators.pdf()})
+
+        generator.done(function(pdf: any) {
+            if (iframeRef.current) {
+                iframeRef.current.src = URL.createObjectURL(pdf);
+            }
             setLoading(false);
-            return;
-        }
+        });
 
-        const generator = window.latexjs.parse(latexContent, { generator: new window.latexjs.generators.pdf() });
-
-        const blob = generator.toBlob();
-        const url = URL.createObjectURL(blob);
-        setPdf(url);
+        generator.error(function(err: Error) {
+            setError("Error rendering PDF: " + err.message);
+            setLoading(false);
+        });
 
       } catch (e: any) {
         setError("Error rendering PDF: " + e.message);
-        setPdf(null);
         console.error(e);
-      } finally {
         setLoading(false);
       }
     };
     
-    // Debounce PDF generation
+    // Debounce PDF generation to avoid re-rendering on every keystroke
     const handler = setTimeout(generatePdf, 500);
 
     return () => {
         clearTimeout(handler);
-        if (pdf) {
-          URL.revokeObjectURL(pdf);
-        }
     };
   }, [latexContent]);
 
-  function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
-    setNumPages(numPages);
-  }
 
   return (
     <Card className="h-full flex flex-col">
@@ -80,14 +75,8 @@ export default function ResumePreview({ latexContent }: ResumePreviewProps) {
       <CardContent className="flex-grow bg-muted/50 rounded-b-lg p-4 overflow-auto flex items-center justify-center">
         {loading && <Loader2 className="h-8 w-8 animate-spin text-primary" />}
         {error && <div className="text-destructive text-sm p-4 bg-destructive/10 rounded-md">{error}</div>}
-        {pdf && !error && (
-           <Document file={pdf} onLoadSuccess={onDocumentLoadSuccess} loading={<Loader2 className="h-8 w-8 animate-spin text-primary" />}>
-             {Array.from(new Array(numPages || 0), (el, index) => (
-                <Page key={`page_${index + 1}`} pageNumber={index + 1} renderTextLayer={false} />
-              ))}
-          </Document>
-        )}
-        {!pdf && !loading && !error && (
+        <iframe ref={iframeRef} style={{ width: '100%', height: '100%', border: 'none' }} title="Resume Preview"></iframe>
+        {!loading && !error && !latexContent && (
           <div className="text-center text-muted-foreground">
             <p>Start typing your LaTeX code to see a preview.</p>
           </div>
