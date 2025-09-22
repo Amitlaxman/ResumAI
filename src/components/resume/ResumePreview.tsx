@@ -36,15 +36,16 @@ export default function ResumePreview({ latexContent }: ResumePreviewProps) {
             setLoading(false);
             return;
         }
-        
-        const generator = new window.latexjs.HtmlGenerator({ hyphenate: false });
-        const doc = generator.parse(latexContent);
-        
-        const pdfBlob = await new Promise((resolve, reject) => {
-          doc.getPDF('blob').then(resolve).catch(reject);
+
+        const generator = window.latexjs.parse(latexContent, { generator: new window.latexjs.generators.pdf() });
+
+        const blob = await new Promise((resolve) => {
+          generator.toBlob(resolve);
         });
 
-        setPdf(URL.createObjectURL(pdfBlob as Blob));
+        const url = URL.createObjectURL(blob as Blob);
+        setPdf(url);
+
       } catch (e: any) {
         setError("Error rendering PDF: " + e.message);
         setPdf(null);
@@ -63,6 +64,10 @@ export default function ResumePreview({ latexContent }: ResumePreviewProps) {
 
     return () => {
         clearTimeout(handler);
+        // Clean up the object URL to avoid memory leaks
+        if (pdf) {
+          URL.revokeObjectURL(pdf);
+        }
     };
   }, [latexContent]);
 
