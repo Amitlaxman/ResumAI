@@ -91,7 +91,7 @@ const chatFlow = ai.defineFlow(
       }
     });
 
-    const output = llmResponse.output();
+    const output = llmResponse.output;
     
     if (output?.isResumeRequest && output.jobDescription) {
         const resumeResult = await generateResumeFromProfile({
@@ -108,7 +108,7 @@ const chatFlow = ai.defineFlow(
     }
     
     // If a tool was used, the reply might be empty. Formulate a response.
-    const toolCalls = llmResponse.toolCalls();
+    const toolCalls = llmResponse.toolCalls;
     if (toolCalls && toolCalls.length > 0) {
         return { reply: "I've updated your profile with that information. What's next?" };
     }
