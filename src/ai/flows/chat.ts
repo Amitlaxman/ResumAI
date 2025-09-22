@@ -11,7 +11,9 @@
 import { ai } from '@/ai/genkit';
 import { generateResumeFromProfile } from './generate-resume-from-profile';
 import { z } from 'zod';
-import { updateProfileInFirestore } from '@/lib/firestore';
+import { getProfileFromFirestore, updateProfileInFirestore } from '@/lib/firestore';
+import type { UserProfile } from '@/types';
+
 
 // Zod schema for a single message in the chat history
 const MessageSchema = z.object({
@@ -41,7 +43,7 @@ export type ChatOutput = z.infer<typeof ChatOutputSchema>;
 const updateUserProfileTool = ai.defineTool(
     {
         name: 'updateUserProfile',
-        description: "Update one or more sections of the user's professional profile. Use this when the user provides new information about their career, skills, or background. Always append new information to the existing content of a field.",
+        description: "Update one or more sections of the user's professional profile. Use this when the user provides new information about their career, skills, or background. Always append new information to the existing content of a field, using the provided current profile data as context.",
         inputSchema: z.object({
             name: z.string().optional().describe("The user's full name."),
             headline: z.string().optional().describe("The user's professional headline (e.g., 'Senior Software Engineer')."),
@@ -56,13 +58,26 @@ const updateUserProfileTool = ai.defineTool(
         }),
         outputSchema: z.string(),
     },
-    async (updates) => {
-        // In a real app, you'd get the UID from the authenticated session.
-        const mockUid = 'mock-user-id-from-session'; 
+    async (updates, context) => {
+        const { profile } = context as { profile: UserProfile };
         
-        // We need to provide the *real* UID here, which we don't have in this scope.
-        // This tool is now just for the AI's reasoning. The actual update will happen in the flow.
-        return 'Profile update queued.';
+        const profileUpdate: Partial<UserProfile> = {};
+
+        for (const [key, value] of Object.entries(updates)) {
+            if (value !== undefined) {
+                const existingValue = profile[key as keyof UserProfile];
+                if (typeof existingValue === 'string' && existingValue) {
+                    // @ts-ignore
+                    profileUpdate[key] = `${existingValue}\n${value}`;
+                } else {
+                     // @ts-ignore
+                    profileUpdate[key] = value;
+                }
+            }
+        }
+        
+        await updateProfileInFirestore(profile.uid, profileUpdate);
+        return "Profile successfully updated.";
     }
 );
 
@@ -74,20 +89,26 @@ const chatFlow = ai.defineFlow(
     outputSchema: ChatOutputSchema,
   },
   async ({ history, prompt, profile }) => {
+    
+    const parsedProfile = JSON.parse(profile) as UserProfile;
 
     const llmResponse = await ai.generate({
-      prompt: `The user's prompt is: ${prompt}.
-               The user's current profile is: ${profile}.
-               The chat history is: ${JSON.stringify(history)}`,
+      prompt: `The user's prompt is: ${prompt}.`,
       model: 'googleai/gemini-2.5-flash',
       tools: [updateUserProfileTool],
+      toolConfig: {
+          context: {
+              profile: parsedProfile // Pass the parsed profile as context to the tool
+          }
+      },
       system: `You are a helpful AI career assistant. Your goal is to help the user build their professional profile and generate resumes.
                1. Engage in a friendly, natural conversation.
-               2. When the user provides information for their profile, use the updateUserProfileTool to prepare the update.
-               3. IMPORTANT: When updating a text field (like experience, skills, etc.), you MUST provide the user's existing content from their profile and APPEND the new information to it. Do NOT just pass the new information alone.
+               2. When the user provides information for their profile (like skills, experience, etc.), use the 'updateUserProfileTool'.
+               3. IMPORTANT: When updating a text field (like experience, skills), you MUST combine the user's existing information from their profile with the new information they provide. Do NOT just pass the new information alone. Your tool will handle the logic of appending. You must call the tool with only the new information provided by the user.
                4. If the user provides a job description and explicitly asks to create a resume, your primary goal is to extract the job description and a suitable title. Then, respond with ONLY a JSON object: {"isResumeRequest": true, "jobDescription": "...", "title": "..."}. Do not add any conversational text.
                5. For all other interactions, provide a conversational reply in the 'reply' field.
                `,
+      history: [...history, {role: 'assistant', content: `Here is the user's current profile: ${profile}`}],
       output: {
           schema: z.object({
               isResumeRequest: z.boolean().optional().describe('Set to true if the user is asking to generate a resume.'),
@@ -118,13 +139,7 @@ const chatFlow = ai.defineFlow(
     // Handle profile updates
     const toolCalls = llmResponse.toolCalls;
     if (toolCalls && toolCalls.length > 0) {
-        const profileUpdate = toolCalls[0].output; // The arguments passed to the tool by the AI
-        
-        // In a real app, you'd get the UID from the authenticated session.
-        const mockUid = 'mock-user-id-from-session'; 
-        // @ts-ignore - The AI output matches the partial profile, but TS can't know that.
-        await updateProfileInFirestore(mockUid, profileUpdate);
-
+        // The tool now handles the database update directly.
         return { reply: "I've updated your profile with that information. What's next?" };
     }
 
@@ -134,19 +149,5 @@ const chatFlow = ai.defineFlow(
 
 
 export async function chat(input: ChatInput): Promise<ChatOutput> {
-  // A bit of a hack: since we can't get the UID inside the tool, we'll intercept the tool call
-  // and perform the DB operation here where we have more context.
-  const flowResult = await chatFlow(input);
-
-  // The AI will generate tool call arguments, but we need the UID to actually save them.
-  // The 'updateUserProfileTool' has a dummy implementation. We look at what the AI *wanted* to do,
-  // and then we do it for real here. This is a workaround for not having session access in the tool.
-  const parsedProfile = JSON.parse(input.profile);
-  if (parsedProfile.uid && flowResult.reply.includes("updated your profile")) {
-     // This is brittle, but signals that a tool call likely happened.
-     // In a real scenario, the flow would return a more structured response indicating a profile update.
-     // We can't see what the tool call was here, but the dashboard will refetch the profile anyway.
-  }
-  
-  return flowResult;
+  return await chatFlow(input);
 }
