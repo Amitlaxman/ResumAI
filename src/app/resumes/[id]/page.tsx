@@ -114,15 +114,15 @@ export default function ResumePage() {
   }
 
   return (
-    <div className="container mx-auto p-4 md:p-8 flex flex-col h-[calc(100vh-var(--header-height)-1px)]" style={{'--header-height': '68px'} as React.CSSProperties}>
-      <div className="flex-shrink-0">
+     <div className="flex-1 flex flex-col min-h-0">
+      <div className="container mx-auto p-4 md:px-8 flex-shrink-0">
         <Button variant="ghost" onClick={() => router.push('/dashboard')} className="mb-4">
           <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
         </Button>
       </div>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSave)} className="space-y-6 flex-grow flex flex-col">
+        <form onSubmit={form.handleSubmit(onSave)} className="space-y-6 flex-grow flex flex-col min-h-0 container mx-auto px-4 md:px-8 pb-8">
           <div className="flex justify-between items-start flex-wrap gap-4 flex-shrink-0">
             <FormField
               control={form.control}
