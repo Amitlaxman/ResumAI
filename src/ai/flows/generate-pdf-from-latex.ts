@@ -33,7 +33,10 @@ const compileLatexTool = ai.defineTool(
       try {
         const response = await fetch('https://pdf-compiler.vertex-ai.cloud.goog/compile', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': process.env.GEMINI_API_KEY || ''
+          },
           body: JSON.stringify({ latex }),
         });
   
