@@ -18,6 +18,7 @@ export default function ResumePreview({ latexContent }: ResumePreviewProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.latexjs) {
@@ -26,33 +27,35 @@ export default function ResumePreview({ latexContent }: ResumePreviewProps) {
     }
     
     if (!latexContent) {
-        if(iframeRef.current?.contentWindow) {
-            iframeRef.current.contentWindow.document.body.innerHTML = "";
-        }
-        return;
+      if (pdfUrl) {
+        URL.revokeObjectURL(pdfUrl);
+        setPdfUrl(null);
+      }
+      if(iframeRef.current) {
+        iframeRef.current.src = "about:blank";
+      }
+      return;
     }
 
     const generatePdf = () => {
       setLoading(true);
       setError(null);
       try {
-        const generator = window.latexjs.parse(latexContent, {generator: new window.latexjs.generators.pdf()})
+        // The latex.js library from the CDN uses this pattern
+        const generator = window.latexjs.parse(latexContent);
+        const blob = generator.toBlob('application/pdf');
+        const url = URL.createObjectURL(blob);
+        
+        if (pdfUrl) {
+          URL.revokeObjectURL(pdfUrl);
+        }
 
-        generator.done(function(pdf: any) {
-            if (iframeRef.current) {
-                iframeRef.current.src = URL.createObjectURL(pdf);
-            }
-            setLoading(false);
-        });
-
-        generator.error(function(err: Error) {
-            setError("Error rendering PDF: " + err.message);
-            setLoading(false);
-        });
+        setPdfUrl(url);
 
       } catch (e: any) {
         setError("Error rendering PDF: " + e.message);
         console.error(e);
+      } finally {
         setLoading(false);
       }
     };
@@ -75,7 +78,9 @@ export default function ResumePreview({ latexContent }: ResumePreviewProps) {
       <CardContent className="flex-grow bg-muted/50 rounded-b-lg p-4 overflow-auto flex items-center justify-center">
         {loading && <Loader2 className="h-8 w-8 animate-spin text-primary" />}
         {error && <div className="text-destructive text-sm p-4 bg-destructive/10 rounded-md">{error}</div>}
-        <iframe ref={iframeRef} style={{ width: '100%', height: '100%', border: 'none' }} title="Resume Preview"></iframe>
+        {pdfUrl && !error && (
+            <iframe src={pdfUrl} style={{ width: '100%', height: '100%', border: 'none' }} title="Resume Preview"></iframe>
+        )}
         {!loading && !error && !latexContent && (
           <div className="text-center text-muted-foreground">
             <p>Start typing your LaTeX code to see a preview.</p>
