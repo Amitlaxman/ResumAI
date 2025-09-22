@@ -49,9 +49,9 @@ const compileLatexTool = ai.defineTool(
         const { pdf } = await response.json();
         return { pdfDataUri: `data:application/pdf;base64,${pdf}` };
       } catch (e: any) {
-        console.error("Error compiling latex", e.message);
+        console.error("Error compiling latex:", e);
         // Re-throw the caught error so the flow can handle it.
-        throw e;
+        throw new Error(`Failed to fetch from PDF compiler: ${e.message}`);
       }
     }
   );
