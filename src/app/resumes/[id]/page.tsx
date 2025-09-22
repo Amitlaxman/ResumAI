@@ -60,12 +60,15 @@ export default function ResumePage() {
     try {
         const { pdfDataUri } = await generatePdfFromLatex({ latexContent });
         if (!pdfDataUri) {
-          throw new Error("The compilation service returned an empty result.");
+          toast({ variant: 'destructive', title: 'Compilation Failed', description: 'The PDF compilation service is currently unreachable. Please try again later.' });
+          // Set empty URI so preview component can show error state
+          form.setValue('pdfDataUri', '');
+        } else {
+          form.setValue('pdfDataUri', pdfDataUri);
+          await updateResumeInFirestore(id, { pdfDataUri });
+          setResume(prev => prev ? { ...prev, pdfDataUri } : null);
+          toast({ title: 'PDF Compiled!', description: 'The preview has been updated.' });
         }
-        form.setValue('pdfDataUri', pdfDataUri);
-        await updateResumeInFirestore(id, { pdfDataUri });
-        setResume(prev => prev ? { ...prev, pdfDataUri } : null);
-        toast({ title: 'PDF Compiled!', description: 'The preview has been updated.' });
     } catch (error: any) {
         console.error(error);
         toast({ variant: 'destructive', title: 'Compilation Failed', description: error.message || 'Could not compile the PDF.' });
@@ -105,6 +108,7 @@ export default function ResumePage() {
         };
         fetchResume();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, id, router, toast]);
   
   async function onSave(data: ResumeFormValues) {
@@ -113,8 +117,10 @@ export default function ResumePage() {
     toast({ title: 'Saving resume...' });
 
     try {
-      await updateResumeInFirestore(id, data);
-      setResume(prev => prev ? { ...prev, ...data } : null);
+      // Intentionally not saving pdfDataUri here as it's generated on demand
+      const { pdfDataUri, ...saveData } = data;
+      await updateResumeInFirestore(id, saveData);
+      setResume(prev => prev ? { ...prev, ...saveData } : null);
       
       toast({ title: 'Resume Saved!', description: 'Your changes have been saved.' });
     } catch (error) {
