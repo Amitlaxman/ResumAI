@@ -10,7 +10,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import {defineTool} from 'genkit';
+import { defineTool } from 'genkit';
 
 const GeneratePdfFromLatexInputSchema = z.object({
   latexContent: z.string().describe('The LaTeX content to compile.'),
@@ -59,17 +59,15 @@ const generatePdfFromLatexFlow = ai.defineFlow(
     name: 'generatePdfFromLatexFlow',
     inputSchema: GeneratePdfFromLatexInputSchema,
     outputSchema: GeneratePdfFromLatexOutputSchema,
-    tools: [compileLatexTool]
   },
   async ({ latexContent }) => {
     
     const { output } = await ai.generate({
-        prompt: "Compile the following LaTeX content into a PDF.",
-        history: [{role: 'user', content: [{text: latexContent}]}],
+        prompt: `Compile the following LaTeX content into a PDF: ${latexContent}`,
         tools: [compileLatexTool],
         config: {
             // @ts-ignore
-            toolChoice: "any", 
+            toolChoice: "required", 
         }
     });
 
