@@ -39,6 +39,7 @@ const compileLatexTool = ai.defineTool(
   
         if (!response.ok) {
           const errorBody = await response.text();
+          // Re-throw the error to be caught by the calling flow
           throw new Error(`PDF compilation failed with status ${response.status}: ${errorBody}`);
         }
   
@@ -46,8 +47,8 @@ const compileLatexTool = ai.defineTool(
         return { pdfDataUri: `data:application/pdf;base64,${pdf}` };
       } catch (e: any) {
         console.error("Error compiling latex", e.message);
-        // Return a valid but empty response
-        return { pdfDataUri: '' };
+        // Re-throw the caught error so the flow can handle it.
+        throw e;
       }
     }
   );
