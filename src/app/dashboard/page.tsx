@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Bot, User, Send, Loader2, PlusCircle, FileText, Download } from 'lucide-react';
-import type { Message } from '@/types';
+import type { Message, UserProfile } from '@/types';
 import { chat } from '@/ai/flows/chat';
 import { useToast } from '@/hooks/use-toast';
 import { getProfileFromFirestore, saveResumeToFirestore, getResumesFromFirestore } from '@/lib/firestore';
@@ -24,6 +24,7 @@ export default function DashboardPage() {
   const [input, setInput] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [resumes, setResumes] = useState<Resume[]>([]);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
 
@@ -38,7 +39,7 @@ export default function DashboardPage() {
           setMessages([
               { role: 'assistant', content: `Hello ${user.displayName || 'User'}! I'm your AI career assistant. You can tell me about your skills and experience, and I'll keep your profile updated. When you're ready, just paste a job description and I'll craft a resume for you.` }
           ]);
-          fetchResumes();
+          fetchData();
       }
   }, [user]);
 
@@ -46,17 +47,21 @@ export default function DashboardPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const fetchResumes = async () => {
+  const fetchData = async () => {
     if (user) {
-      const userResumes = await getResumesFromFirestore(user.uid);
+      const [userResumes, userProfile] = await Promise.all([
+        getResumesFromFirestore(user.uid),
+        getProfileFromFirestore(user.uid, user.email!, user.displayName!)
+      ]);
       setResumes(userResumes);
+      setProfile(userProfile);
     }
   };
 
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || !user) return;
+    if (!input.trim() || !user || !profile) return;
 
     const userMessage: Message = { role: 'user', content: input };
     setMessages(prev => [...prev, userMessage]);
@@ -64,24 +69,20 @@ export default function DashboardPage() {
     setIsGenerating(true);
 
     try {
-        const userProfile = await getProfileFromFirestore(user.uid, user.email!, user.displayName!);
-
-        const profileDataString = `
-            Name: ${userProfile.name}
-            Email: ${userProfile.email}
-            Phone: ${userProfile.phone}
-            Headline: ${userProfile.headline}
-            Summary and Experience:
-            ${userProfile.summary}
-        `;
+        // Pass the full profile object, stringified, to the AI.
+        const profileWithUid = { ...profile, uid: user.uid };
+        const profileString = JSON.stringify(profileWithUid, null, 2);
         
         const history = messages.map(m => ({role: m.role, content: m.content}));
 
         const response = await chat({
             history,
             prompt: userMessage.content,
-            profile: profileDataString,
+            profile: profileString,
         });
+
+        // After the chat, always refetch the data to get the latest profile and resumes
+        await fetchData();
 
         if (response.resumeContent) {
             // It's a resume generation response
@@ -91,14 +92,12 @@ export default function DashboardPage() {
                 jobDescription: response.jobDescription || 'From chatbot session',
                 latexContent: response.resumeContent,
             }
-            // @ts-ignore
             const newResume = await saveResumeToFirestore(newResumeData, user.uid);
             router.push(`/resumes/${newResume.id}`);
 
         } else {
              // It's a regular chat response
             setMessages(prev => [...prev, { role: 'assistant', content: response.reply }]);
-            fetchResumes(); // Refresh resume list in case one was created via tool
         }
 
     } catch (error: any) {

@@ -1,12 +1,23 @@
 
 
+export interface Link {
+    label: string;
+    url: string;
+}
+
 export interface UserProfile {
   uid: string;
   name: string;
   email: string;
   phone: string;
   headline: string;
-  summary: string;
+  links: Link[];
+  skills: string; // text blob
+  experience: string; // text blob
+  education: string; // text blob
+  projects: string; // text blob
+  extracurriculars: string; // text blob
+  honorsAndAwards: string; // text blob
 }
 
 export interface Resume {
