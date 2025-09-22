@@ -17,34 +17,59 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ latexContent }) => {
   // This is a temporary fix to handle unsupported LaTeX commands by react-latex-next
   // A more robust solution would be to use a different renderer or adjust the template
   const sanitizedLatex = latexContent
-    ?.replace(/\\documentclass\[.*?\]{.*?}/g, '')
-    .replace(/\\usepackage{.*?}/g, '')
-    .replace(/\\begin{document}/g, '')
-    .replace(/\\end{document}/g, '')
-    .replace(/\\pagestyle{.*?}/g, '')
-    .replace(/\\newcounter{.*?}/g, '')
-    .replace(/\\hypersetup{.*?}/g, '')
-    .replace(/\\urlstyle{.*?}/g, '')
-    .replace(/\\raggedbottom/g, '')
-    .replace(/\\raggedright/g, '')
-    .replace(/\\setlength{.*?}{.*?}/g, '')
-    .replace(/\\hrule/g, '<hr/>')
-    .replace(/\\hfill/g, '<span style="float: right;">') // This won't work as expected in all cases
-    .replace(/\\bfseries/g, '')
-    .replace(/\\scshape/g, '')
-    .replace(/\\color{.*?}/g, '')
-    .replace(/\\resumeheader{(.*?)}/g, '<h1>$1</h1>')
-    .replace(/\\resumecontact{(.*?)}/g, '<p><small>$1</small></p>')
-    .replace(/\\section{(.*?)}/g, '<h2>$1</h2><hr/>')
-    .replace(/\\entry{(.*?)}{(.*?)}{((?:.|\n)*?)}{.*?}/g, '<div><b>$1</b><span style="float: right;">$2</span><br/>$3</div>')
-    .replace(/\\singlelineentry{(.*?)}{(.*?)}/g, '<div><b>$1</b><span style="float: right;">$2</span></div>')
-    .replace(/\\desc{(.*?)}/g, '<ul><li>$1</li></ul>')
-    .replace(/\\bullets{((?:.|\n)*?)}/g, '<ul>$1</ul>')
+    // Remove document setup commands
+    ?.replace(/\\documentclass\[.*?\]{.*?}/gs, '')
+    .replace(/\\usepackage{.*?}/gs, '')
+    .replace(/\\begin{document}/gs, '')
+    .replace(/\\end{document}/gs, '')
+    .replace(/\\pagestyle{.*?}/gs, '')
+    .replace(/\\newcounter{.*?}/gs, '')
+    .replace(/\\hypersetup{.*?}/gs, '')
+    .replace(/\\urlstyle{.*?}/gs, '')
+    .replace(/\\raggedbottom/gs, '')
+    .replace(/\\raggedright/gs, '')
+    .replace(/\\setlength{.*?}{.*?}/gs, '')
+
+    // Replace structural commands with HTML
+    .replace(/\\begin{center}([\s\S]*?)\\end{center}/gs, '<div style="text-align: center;">$1</div>')
+    .replace(/\\resumeheader{(.*?)}/gs, '<h1>$1</h1>')
+    .replace(/\\resumecontact{([\s\S]*?)}/gs, (match, content) => {
+        const lines = content.replace(/\\\\/g, '').trim().split('$|$').map(s => s.trim());
+        return `<p><small>${lines.join(' | ')}</small></p>`;
+    })
+    .replace(/\\section{(.*?)}/gs, '<h2>$1</h2><hr/>')
+    
+    // Handle entry with bullets
+    .replace(/\\entry{(.*?)}{(.*?)}{([\s\S]*?)}{.*?}/gs, (match, left, right, body) => {
+        const bullets = body.replace(/\\bullets{([\s\S]*?)}/gs, '<ul>$1</ul>')
+                           .replace(/\\item/g, '<li>');
+        return `<div><div style="display: flex; justify-content: space-between;"><b>${left}</b><span>${right}</span></div>${bullets}</div>`;
+    })
+    
+    // Handle entry for education (with desc)
+     .replace(/\\entry{(.*?)}{(.*?)}\s*{\s*\\textbf{(.*?)}\s*}\s*{(.*?)}\s*\\vspace{.*?}\s*\\desc{(.*?)}/gs,
+        '<div><div style="display: flex; justify-content: space-between;"><b>$1</b><span>$4</span></div><div><b>$3</b></div><div>$5</div></div>'
+    )
+    
+    .replace(/\\singlelineentry{(.*?)}{((?:.|\n)*?)}/gs, '<div><div style="display: flex; justify-content: space-between;"><b>$1</b><a href="$2" target="_blank" rel="noopener noreferrer">$2</a></div></div>')
+
+    // General list handling
+    .replace(/\\bullets{([\s\S]*?)}/gs, '<ul>$1</ul>')
+    .replace(/\\desc{(.*?)}/gs, '<div>$1</div>')
     .replace(/\\item/g, '<li>')
     .replace(/\\end{itemize}/g, '</ul>')
     .replace(/\\begin{itemize}.*?\]/g, '<ul>')
+    
+
+    // Cleanup remaining formatting commands
+    .replace(/\\hrule/g, '<hr/>')
+    .replace(/\\hfill/g, '')
+    .replace(/\\bfseries/g, '')
+    .replace(/\\scshape/g, '')
+    .replace(/\\color{.*?}/g, '')
     .replace(/\\\\\[.*?\]/g, '<br/>')
-    .replace(/\\vspace{.*?}/g, '');
+    .replace(/\\vspace{.*?}/g, '')
+    .replace(/\\\\/g, '<br/>');
 
 
   return (
