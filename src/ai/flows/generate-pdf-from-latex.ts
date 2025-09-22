@@ -10,7 +10,6 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import { defineTool } from 'genkit';
 
 const GeneratePdfFromLatexInputSchema = z.object({
   latexContent: z.string().describe('The LaTeX content to compile.'),
@@ -23,7 +22,7 @@ const GeneratePdfFromLatexOutputSchema = z.object({
 export type GeneratePdfFromLatexOutput = z.infer<typeof GeneratePdfFromLatexOutputSchema>;
 
 
-const compileLatexTool = defineTool(
+const compileLatexTool = ai.defineTool(
     {
       name: 'compileLatex',
       description: 'Compiles a LaTeX string into a PDF and returns it as a base64 data URI.',
