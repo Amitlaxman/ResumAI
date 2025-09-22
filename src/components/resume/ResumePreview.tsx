@@ -27,7 +27,11 @@ export default function ResumePreview({ latexContent }: ResumePreviewProps) {
   const [numPages, setNumPages] = useState<number | null>(null);
 
   useEffect(() => {
-    const generatePdf = async () => {
+    if (typeof window === 'undefined' || !latexContent) {
+      return;
+    }
+
+    const generatePdf = () => {
       setLoading(true);
       setError(null);
       try {
@@ -39,11 +43,8 @@ export default function ResumePreview({ latexContent }: ResumePreviewProps) {
 
         const generator = window.latexjs.parse(latexContent, { generator: new window.latexjs.generators.pdf() });
 
-        const blob = await new Promise((resolve) => {
-          generator.toBlob(resolve);
-        });
-
-        const url = URL.createObjectURL(blob as Blob);
+        const blob = generator.toBlob();
+        const url = URL.createObjectURL(blob);
         setPdf(url);
 
       } catch (e: any) {
@@ -56,15 +57,10 @@ export default function ResumePreview({ latexContent }: ResumePreviewProps) {
     };
     
     // Debounce PDF generation
-    const handler = setTimeout(() => {
-        if(latexContent) {
-            generatePdf();
-        }
-    }, 500);
+    const handler = setTimeout(generatePdf, 500);
 
     return () => {
         clearTimeout(handler);
-        // Clean up the object URL to avoid memory leaks
         if (pdf) {
           URL.revokeObjectURL(pdf);
         }
