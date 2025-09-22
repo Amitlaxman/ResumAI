@@ -54,6 +54,27 @@ export default function ResumePage() {
     },
   });
 
+  const handleCompile = async (latexContent: string) => {
+    setIsCompiling(true);
+    toast({ title: 'Compiling PDF...', description: 'Please wait.' });
+    try {
+        const { pdfDataUri } = await generatePdfFromLatex({ latexContent });
+        if (!pdfDataUri) {
+          throw new Error("The compilation service returned an empty result.");
+        }
+        form.setValue('pdfDataUri', pdfDataUri);
+        await updateResumeInFirestore(id, { pdfDataUri });
+        setResume(prev => prev ? { ...prev, pdfDataUri } : null);
+        toast({ title: 'PDF Compiled!', description: 'The preview has been updated.' });
+    } catch (error: any) {
+        console.error(error);
+        toast({ variant: 'destructive', title: 'Compilation Failed', description: error.message || 'Could not compile the PDF.' });
+    } finally {
+        setIsCompiling(false);
+    }
+  }
+
+
   useEffect(() => {
     if (!loading && !user) {
       router.push('/login');
@@ -77,6 +98,12 @@ export default function ResumePage() {
                     latexContent: formattedResume.latexContent,
                     pdfDataUri: formattedResume.pdfDataUri,
                 });
+
+                // If PDF data is missing, compile it now.
+                if (!formattedResume.pdfDataUri && formattedResume.latexContent) {
+                  await handleCompile(formattedResume.latexContent);
+                }
+
             } else {
                 toast({ variant: 'destructive', title: 'Error', description: 'Could not load resume data.' });
                 router.push('/dashboard');
@@ -84,7 +111,7 @@ export default function ResumePage() {
         };
         fetchResume();
     }
-  }, [user, id, form, router, toast]);
+  }, [user, id, router, toast]);
   
   async function onSave(data: ResumeFormValues) {
     if (!user || !resume) return;
@@ -104,24 +131,8 @@ export default function ResumePage() {
   }
 
   const handleRecompile = async () => {
-    setIsCompiling(true);
-    toast({ title: 'Recompiling PDF...', description: 'Please wait.' });
-    try {
-        const latexContent = form.getValues('latexContent');
-        const { pdfDataUri } = await generatePdfFromLatex({ latexContent });
-        if (!pdfDataUri) {
-          throw new Error("The compilation service returned an empty result.");
-        }
-        form.setValue('pdfDataUri', pdfDataUri);
-        await updateResumeInFirestore(id, { pdfDataUri });
-        setResume(prev => prev ? { ...prev, pdfDataUri } : null);
-        toast({ title: 'PDF Recompiled!', description: 'The preview has been updated.' });
-    } catch (error: any) {
-        console.error(error);
-        toast({ variant: 'destructive', title: 'Compilation Failed', description: error.message || 'Could not recompile the PDF.' });
-    } finally {
-        setIsCompiling(false);
-    }
+    const latexContent = form.getValues('latexContent');
+    await handleCompile(latexContent);
   }
 
   const handleDownloadPdf = () => {
@@ -137,7 +148,7 @@ export default function ResumePage() {
        toast({
         variant: "destructive",
         title: "Error",
-        description: "No PDF data available to download.",
+        description: "No PDF data available to download. Please compile the resume first.",
       });
     }
   };

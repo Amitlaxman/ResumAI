@@ -8,7 +8,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { generateResumeFromProfile } from '@/ai/flows/generate-resume-from-profile';
-import { generatePdfFromLatex } from '@/ai/flows/generate-pdf-from-latex';
 import { getProfileFromFirestore, saveResumeToFirestore } from '@/lib/firestore';
 
 
@@ -83,22 +82,13 @@ export default function NewResumePage() {
       if (!resumeContent) {
         throw new Error("AI failed to generate resume content.");
       }
-      
-      // 2. Compile LaTeX to PDF
-      const { pdfDataUri } = await generatePdfFromLatex({
-          latexContent: resumeContent,
-      });
 
-      if (!pdfDataUri) {
-          throw new Error("Failed to compile LaTeX to PDF.");
-      }
-
-      // 3. Save to our mock "firestore"
+      // 2. Save to our mock "firestore" without PDF data
       const newResumeData = {
           title: data.title,
           jobDescription: data.jobDescription,
           latexContent: resumeContent,
-          pdfDataUri: pdfDataUri,
+          // pdfDataUri will be generated on the client side
       }
       // @ts-ignore
       const newResume = await saveResumeToFirestore(newResumeData, user.uid);
@@ -110,12 +100,12 @@ export default function NewResumePage() {
       
       router.push(`/resumes/${newResume.id}`);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
       toast({
         variant: 'destructive',
         title: 'Generation Failed',
-        description: 'The AI could not generate a resume. Please try again.',
+        description: error.message || 'The AI could not generate a resume. Please try again.',
       });
     } finally {
       setIsSubmitting(false);
