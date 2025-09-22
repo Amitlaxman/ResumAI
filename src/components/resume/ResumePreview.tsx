@@ -43,16 +43,16 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ latexContent }) => {
     })
     .replace(/\\section{(.*?)}/gs, '<h2 style="font-size: 1.2rem; font-weight: 700; text-transform: uppercase; color: #2d3748; border-bottom: 2px solid #2d3748; padding-bottom: 4px; margin-top: 1.5rem; margin-bottom: 1rem;">$1</h2>')
     .replace(/\\entry{(.*?)}{(.*?)}{([\s\S]*?)}{.*?}/gs, (match, left, right, body) => {
-        const bullets = body.replace(/\\bullets{([\s\S]*?)}/gs, '<ul style="margin-left: 20px; padding-left: 0; list-style-type: disc; margin-top: 8px;">$1</ul>')
+        const bullets = body.replace(/\\bullets{([\s\S]*?)}/gs, '<ul style="padding-left: 20px; list-style-type: disc; margin-top: 8px;">$1</ul>')
                            .replace(/\\item/g, '<li style="margin-bottom: 6px;">');
         return `<div style="margin-bottom: 1.25rem;"><div style="display: flex; justify-content: space-between; font-weight: 600;"><span>${left}</span><span>${right}</span></div><div>${bullets}</div></div>`;
     })
      .replace(/\\entry{(.*?)}{(.*?)}\s*{\s*\\textbf{(.*?)}\s*}\s*{(.*?)}\s*\\vspace{.*?}\s*\\desc{(.*?)}/gs,
-        '<div style="margin-bottom: 1.25rem;"><div style="display: flex; justify-content: space-between; font-weight: 600;"><span>$1</span><span>$4</span></div><div style="font-style: italic; color: #4a5568;">$3</div><div style="margin-top: 4px; padding-left: 20px;">$5</div></div>'
+        '<div style="margin-bottom: 1.25rem;"><div style="display: flex; justify-content: space-between; font-weight: 600;"><span>$1</span><span>$4</span></div><div style="font-style: italic; color: #4a5568;">$3</div><div style="margin-top: 4px; padding-left: 0;">$5</div></div>'
     )
     .replace(/\\singlelineentry{(.*?)}{([\s\S]*?)}/gs, '<div><div style="display: flex; justify-content: space-between; margin-bottom: 0.75rem;"><span style="font-weight: 600;">$1</span><span style="word-break: break-all; text-align: right;">$2</span></div></div>')
-    .replace(/\\desc{(.*?)}/gs, '<div style="margin-top: 4px; padding-left: 20px; margin-bottom: 0.75rem;">$1</div>')
-    .replace(/\\bullets{([\s\S]*?)}/gs, '<ul style="margin-left: 20px; padding-left: 0; list-style-type: disc; margin-top: 8px;">$1</ul>')
+    .replace(/\\desc{(.*?)}/gs, '<div style="margin-top: 4px; padding-left: 0; margin-bottom: 1rem;">$1</div>')
+    .replace(/\\bullets{([\s\S]*?)}/gs, '<ul style="padding-left: 20px; list-style-type: disc; margin-top: 8px;">$1</ul>')
     .replace(/\\item/g, '<li style="margin-bottom: 6px;">')
     
     // Cleanup remaining formatting commands
