@@ -68,15 +68,20 @@ const generatePdfFromLatexFlow = ai.defineFlow(
     outputSchema: GeneratePdfFromLatexOutputSchema,
   },
   async ({ latexContent }) => {
-    
-    // Instead of forcing a tool, we can just call it directly since that's all this flow does.
-    const toolResponse = await compileLatexTool({ latex: latexContent });
+    try {
+        const toolResponse = await compileLatexTool({ latex: latexContent });
 
-    if (!toolResponse.pdfDataUri) {
-        throw new Error('PDF generation failed. The compilation tool returned an empty response.');
+        if (!toolResponse.pdfDataUri) {
+            throw new Error('PDF generation failed. The compilation tool returned an empty response.');
+        }
+        
+        return { pdfDataUri: toolResponse.pdfDataUri };
+    } catch (error) {
+        console.error("FATAL: PDF Generation failed in flow.", error);
+        // Return an empty data URI to prevent the app from crashing.
+        // The client will handle this gracefully.
+        return { pdfDataUri: "" };
     }
-    
-    return { pdfDataUri: toolResponse.pdfDataUri };
   }
 );
 
