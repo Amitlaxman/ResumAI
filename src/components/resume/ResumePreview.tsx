@@ -35,25 +35,25 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ latexContent }) => {
     .replace(/\\ifx&#3&\\else/, '') // specific artifact cleanup
 
     // Replace structural commands with HTML-like tags for parsing
-    .replace(/\\begin{center}([\s\S]*?)\\end{center}/gs, '<div style="text-align: center;">$1</div>')
-    .replace(/\\resumeheader{(.*?)}/gs, '<h1 style="font-size: 2.25rem; font-weight: bold; color: #000080; margin-bottom: 4px;">$1</h1>')
+    .replace(/\\begin{center}([\s\S]*?)\\end{center}/gs, '<div style="text-align: center; margin-bottom: 1rem;">$1</div>')
+    .replace(/\\resumeheader{(.*?)}/gs, '<h1 style="font-size: 2.5rem; font-weight: 700; color: #2d3748; margin-bottom: 0.25rem;">$1</h1>')
     .replace(/\\resumecontact{([\s\S]*?)}/gs, (match, content) => {
         const lines = content.replace(/\\\\/g, '').trim().split('$|$').map(s => s.trim());
-        return `<p style="text-align: center; font-size: small;">${lines.join(' | ')}</p>`;
+        return `<p style="text-align: center; font-size: 0.9rem; color: #4a5568;">${lines.join(' | ')}</p>`;
     })
-    .replace(/\\section{(.*?)}/gs, '<h2 style="font-size: 1.25rem; font-weight: bold; text-transform: uppercase; color: #000080; border-bottom: 1px solid black; padding-bottom: 2px; margin-top: 12px; margin-bottom: 6px;">$1</h2>')
+    .replace(/\\section{(.*?)}/gs, '<h2 style="font-size: 1.2rem; font-weight: 700; text-transform: uppercase; color: #2d3748; border-bottom: 2px solid #2d3748; padding-bottom: 4px; margin-top: 1.25rem; margin-bottom: 0.75rem;">$1</h2>')
     .replace(/\\entry{(.*?)}{(.*?)}{([\s\S]*?)}{.*?}/gs, (match, left, right, body) => {
-        const bullets = body.replace(/\\bullets{([\s\S]*?)}/gs, '<ul style="margin-left: 20px; padding-left: 0; list-style-type: disc;">$1</ul>')
-                           .replace(/\\item/g, '<li>');
-        return `<div style="margin-bottom: 8px;"><div style="display: flex; justify-content: space-between;"><b>${left}</b><span>${right}</span></div><div>${bullets}</div></div>`;
+        const bullets = body.replace(/\\bullets{([\s\S]*?)}/gs, '<ul style="margin-left: 20px; padding-left: 0; list-style-type: disc; margin-top: 4px;">$1</ul>')
+                           .replace(/\\item/g, '<li style="margin-bottom: 4px;">');
+        return `<div style="margin-bottom: 1rem;"><div style="display: flex; justify-content: space-between; font-weight: 600;"><span>${left}</span><span>${right}</span></div><div>${bullets}</div></div>`;
     })
      .replace(/\\entry{(.*?)}{(.*?)}\s*{\s*\\textbf{(.*?)}\s*}\s*{(.*?)}\s*\\vspace{.*?}\s*\\desc{(.*?)}/gs,
-        '<div style="margin-bottom: 8px;"><div style="display: flex; justify-content: space-between;"><b>$1</b><span>$4</span></div><div><b>$3</b></div><div style="margin-left: 20px;">$5</div></div>'
+        '<div style="margin-bottom: 1rem;"><div style="display: flex; justify-content: space-between; font-weight: 600;"><span>$1</span><span>$4</span></div><div style="font-style: italic; color: #4a5568;">$3</div><div style="margin-top: 4px; padding-left: 20px;">$5</div></div>'
     )
-    .replace(/\\singlelineentry{(.*?)}{([\s\S]*?)}/gs, '<div><div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><b>$1</b><span style="word-break: break-all;">$2</span></div></div>')
-    .replace(/\\desc{(.*?)}/gs, '<div style="margin-left: 20px;">$1</div>')
-    .replace(/\\bullets{([\s\S]*?)}/gs, '<ul style="margin-left: 20px; padding-left: 0; list-style-type: disc;">$1</ul>')
-    .replace(/\\item/g, '<li>')
+    .replace(/\\singlelineentry{(.*?)}{([\s\S]*?)}/gs, '<div><div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;"><span style="font-weight: 600;">$1</span><span style="word-break: break-all; text-align: right;">$2</span></div></div>')
+    .replace(/\\desc{(.*?)}/gs, '<div style="margin-top: 4px; padding-left: 20px;">$1</div>')
+    .replace(/\\bullets{([\s\S]*?)}/gs, '<ul style="margin-left: 20px; padding-left: 0; list-style-type: disc; margin-top: 4px;">$1</ul>')
+    .replace(/\\item/g, '<li style="margin-bottom: 4px;">')
     
     // Cleanup remaining formatting commands
     .replace(/\\hrule/g, '<hr />')
