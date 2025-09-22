@@ -1,24 +1,25 @@
+
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CheckCircle, Bot, User, Edit } from 'lucide-react';
+import { CheckCircle, Bot, MessageSquare, Edit } from 'lucide-react';
 
 const features = [
   {
-    icon: <User className="h-10 w-10 text-primary" />,
-    title: 'Profile Management',
-    description: 'Easily create and manage your professional profile. Your information is securely stored and ready to use.',
+    icon: <MessageSquare className="h-10 w-10 text-primary" />,
+    title: 'Conversational Profile Building',
+    description: 'Simply chat with our AI assistant. It learns about you and updates your professional profile as you talk.',
   },
   {
     icon: <Bot className="h-10 w-10 text-primary" />,
     title: 'AI-Powered Generation',
-    description: 'Our advanced AI takes your profile and a job description to craft a tailored, high-impact resume in seconds.',
+    description: 'Paste a job description and our AI will craft a tailored, high-impact resume in seconds, based on your profile.',
   },
   {
     icon: <Edit className="h-10 w-10 text-primary" />,
     title: 'Edit & Customize',
-    description: 'Fine-tune your generated resume. You get full access to the LaTeX code for ultimate customization.',
+    description: 'Fine-tune your generated resume. You get full access to the LaTeX code for ultimate customization and download.',
   },
 ];
 
@@ -32,7 +33,7 @@ export default function Home() {
             ResumAI
           </h1>
           <p className="max-w-2xl mx-auto text-lg md:text-xl text-muted-foreground mb-8">
-            Craft the perfect resume for your dream job. Let our AI-powered engine tailor your experience to any role.
+            Craft the perfect resume for your dream job. Let our AI assistant tailor your experience to any role through conversation.
           </p>
           <div className="space-x-4">
             <Button asChild size="lg" className="bg-accent hover:bg-accent/90 text-accent-foreground">
@@ -76,34 +77,34 @@ export default function Home() {
               <li className="flex items-start">
                 <CheckCircle className="h-6 w-6 text-primary mt-1 mr-4 flex-shrink-0" />
                 <div>
-                  <h3 className="font-semibold text-lg">1. Build Your Profile</h3>
-                  <p className="text-muted-foreground">Fill in your professional details—name, contact info, headline, and a summary of your skills and experience.</p>
+                  <h3 className="font-semibold text-lg">1. Chat with the AI</h3>
+                  <p className="text-muted-foreground">Talk to our AI assistant about your skills, work history, and professional goals to build your profile.</p>
                 </div>
               </li>
               <li className="flex items-start">
                 <CheckCircle className="h-6 w-6 text-primary mt-1 mr-4 flex-shrink-0" />
                 <div>
                   <h3 className="font-semibold text-lg">2. Provide a Job Description</h3>
-                  <p className="text-muted-foreground">Paste the description of the job you're applying for. Our AI will analyze it for keywords and requirements.</p>
+                  <p className="text-muted-foreground">Paste the description of the job you're applying for. The AI will analyze it for you.</p>
                 </div>
               </li>
               <li className="flex items-start">
                 <CheckCircle className="h-6 w-6 text-primary mt-1 mr-4 flex-shrink-0" />
                 <div>
                   <h3 className="font-semibold text-lg">3. Generate & Download</h3>
-                  <p className="text-muted-foreground">With one click, generate a tailored resume. Review, edit the LaTeX if you wish, and download your file.</p>
+                  <p className="text-muted-foreground">The AI will generate a tailored resume. Review, edit the LaTeX, and download your PDF file.</p>
                 </div>
               </li>
             </ul>
           </div>
           <div className="rounded-lg overflow-hidden shadow-2xl">
             <Image
-              src="https://picsum.photos/seed/resume-app/600/400"
-              alt="Resume editing interface"
+              src="https://picsum.photos/seed/chatbot-resume/600/400"
+              alt="Resume chatbot interface"
               width={600}
               height={400}
               className="w-full h-auto"
-              data-ai-hint="resume editing"
+              data-ai-hint="chatbot ui"
             />
           </div>
         </div>

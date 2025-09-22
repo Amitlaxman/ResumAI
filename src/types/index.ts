@@ -18,3 +18,8 @@ export interface Resume {
   pdfDataUri?: string;
   createdAt: string; // Stored as ISO string
 }
+
+export interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+}
