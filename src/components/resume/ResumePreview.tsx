@@ -67,7 +67,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ latexContent }) => {
     .replace(/\\\\/g, '<br/>')
     // Catch-all to remove any remaining simple commands or artifacts
     .replace(/\\[a-zA-Z]+/g, '')
-    .replace(/[{}]/g, ''); // Remove stray curly braces
+    .replace(/[{}]/g, '');
 
 
   return (

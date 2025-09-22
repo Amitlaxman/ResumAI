@@ -48,7 +48,8 @@ The user's name should go in the \\resumeheader section.
 The user's professional summary, skills, experience, education, and projects should be organized into appropriate sections using the \\section, \\entry, \\singlelineentry, \\desc, and \\bullets commands.
 
 The "Summary" section should be a professional summary tailored for the job description.
-The "Experience" section should be adapted from the user's summary/experience, highlighting the most relevant points for the job description.
+The "Experience" and "Projects" sections should be adapted from the user's profile, highlighting the most relevant points for the job description.
+IMPORTANT: After each \\entry block in the Experience and Projects sections, you MUST add a \\vspace{8pt} command to ensure proper spacing. Do not add it after the last entry in a section.
 
 User Profile Data:
 {{{profileData}}}
@@ -71,4 +72,5 @@ const generateResumeFromProfileFlow = ai.defineFlow(
     return output!;
   }
 );
+
 
