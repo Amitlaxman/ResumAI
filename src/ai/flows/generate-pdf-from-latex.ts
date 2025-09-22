@@ -50,7 +50,11 @@ const compileLatexTool = ai.defineTool(
         return { pdfDataUri: `data:application/pdf;base64,${pdf}` };
       } catch (e: any) {
         console.error("Error compiling latex:", e);
-        // Re-throw the caught error so the flow can handle it.
+        // Check for the specific fetch failed error
+        if (e.message.includes('fetch failed')) {
+            throw new Error('The PDF compilation service is currently unreachable from this environment. Please check network configuration.');
+        }
+        // Re-throw other caught errors so the flow can handle them.
         throw new Error(`Failed to fetch from PDF compiler: ${e.message}`);
       }
     }
