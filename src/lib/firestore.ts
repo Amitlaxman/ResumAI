@@ -88,9 +88,8 @@ async function initializeUserResumes(userId: string) {
                     ...resumeData,
                     id: newId,
                     userId: userId,
-                    // @ts-ignore
-                    createdAt: { toDate: () => new Date() }, // Mock Timestamp
-                };
+                    createdAt: new Date().toISOString(),
+                } as unknown as Resume;
             }
         });
         setMockData(MOCK_RESUMES_KEY, allResumes);
@@ -116,9 +115,8 @@ export async function saveResumeToFirestore(resume: Omit<Resume, 'id' | 'created
         ...resume,
         id: newId,
         userId: userId,
-        // @ts-ignore
-        createdAt: { toDate: () => new Date() }, // Mock Timestamp
-    };
+        createdAt: new Date().toISOString(),
+    } as unknown as Resume;
     resumes[newId] = newResume;
     setMockData(MOCK_RESUMES_KEY, resumes);
     return newResume;

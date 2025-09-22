@@ -27,16 +27,7 @@ export default function DashboardPage() {
     if (user) {
       const fetchResumes = async () => {
         const userResumes = await getResumesFromFirestore(user.uid);
-        const formattedResumes = userResumes.map(r => {
-          const createdAtDate = r.createdAt && typeof (r.createdAt as any).toDate === 'function' 
-            ? (r.createdAt as any).toDate() 
-            : new Date(r.createdAt as any);
-          return {
-            ...r,
-            createdAt: createdAtDate,
-          };
-        });
-        setResumes(formattedResumes as unknown as Resume[]);
+        setResumes(userResumes);
       };
       fetchResumes();
     }
@@ -71,7 +62,7 @@ export default function DashboardPage() {
                     <CardTitle className="hover:text-primary">
                       <Link href={`/resumes/${resume.id}`}>{resume.title}</Link>
                     </CardTitle>
-                    <CardDescription>Created on {(resume.createdAt as unknown as Date).toLocaleDateString()}</CardDescription>
+                    <CardDescription>Created on {new Date(resume.createdAt).toLocaleDateString()}</CardDescription>
                   </div>
                    <DropdownMenu>
                     <DropdownMenuTrigger asChild>

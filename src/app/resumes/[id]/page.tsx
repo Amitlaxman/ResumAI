@@ -86,23 +86,16 @@ export default function ResumePage() {
         const fetchResume = async () => {
             const fetchedResume = await getResumeFromFirestore(id);
             if (fetchedResume) {
-                 const createdAtDate = fetchedResume.createdAt && typeof (fetchedResume.createdAt as any).toDate === 'function' 
-                    ? (fetchedResume.createdAt as any).toDate() 
-                    : new Date(fetchedResume.createdAt as any);
-                const formattedResume = {
-                    ...fetchedResume,
-                    createdAt: createdAtDate,
-                };
-                setResume(formattedResume as unknown as Resume);
+                setResume(fetchedResume as unknown as Resume);
                 form.reset({
-                    title: formattedResume.title,
-                    latexContent: formattedResume.latexContent,
-                    pdfDataUri: formattedResume.pdfDataUri,
+                    title: fetchedResume.title,
+                    latexContent: fetchedResume.latexContent,
+                    pdfDataUri: fetchedResume.pdfDataUri,
                 });
 
                 // If PDF data is missing, compile it now.
-                if (!formattedResume.pdfDataUri && formattedResume.latexContent) {
-                  await handleCompile(formattedResume.latexContent);
+                if (!fetchedResume.pdfDataUri && fetchedResume.latexContent) {
+                  await handleCompile(fetchedResume.latexContent);
                 }
 
             } else {

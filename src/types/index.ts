@@ -1,4 +1,4 @@
-import type { Timestamp } from "firebase/firestore";
+
 
 export interface UserProfile {
   uid: string;
@@ -16,5 +16,5 @@ export interface Resume {
   jobDescription: string;
   latexContent: string;
   pdfDataUri?: string;
-  createdAt: Timestamp;
+  createdAt: string; // Stored as ISO string
 }
