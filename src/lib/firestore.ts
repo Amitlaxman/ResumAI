@@ -1,133 +1,90 @@
 
 'use server';
+import { collection, doc, getDoc, setDoc, getDocs, addDoc, updateDoc, Timestamp, query, where } from 'firebase/firestore';
+import { db } from './firebase';
 import type { UserProfile, Resume } from '@/types';
 
-// This is a mock database implementation using session storage to simulate Firestore.
-// In a real application, you would replace this with actual calls to the Firestore SDK.
-
-const MOCK_PROFILES_KEY = 'mock_profiles';
-const MOCK_RESUMES_KEY = 'mock_resumes';
-
-function getMockData<T>(key: string): Record<string, T> {
-    if (typeof window === 'undefined') return {};
-    const data = sessionStorage.getItem(key);
-    return data ? JSON.parse(data) : {};
-}
-
-function setMockData<T>(key: string, data: Record<string, T>) {
-    if (typeof window === 'undefined') return;
-    sessionStorage.setItem(key, JSON.stringify(data));
-}
 
 // --- Profile Functions ---
 
-const defaultProfile: Omit<UserProfile, 'uid' | 'email'> = {
-    name: 'John Doe',
+const defaultProfileData: Omit<UserProfile, 'uid' | 'email' | 'name'> = {
     phone: '123-456-7890',
-    headline: 'Experienced Software Developer',
-    summary: 'A highly motivated and results-oriented software developer with over 5 years of experience in building and maintaining web applications. Proficient in JavaScript, React, and Node.js. Passionate about creating clean, efficient, and user-friendly code.',
+    headline: 'Experienced Professional',
+    summary: 'A highly motivated and results-oriented individual with a passion for excellence. Skilled in various areas and always eager to learn and grow.',
 };
 
 export async function getProfileFromFirestore(uid: string, email: string, displayName: string): Promise<UserProfile> {
-    const profiles = getMockData<UserProfile>(MOCK_PROFILES_KEY);
-    if (profiles[uid]) {
-        return profiles[uid];
+    const profileRef = doc(db, 'profiles', uid);
+    const profileSnap = await getDoc(profileRef);
+
+    if (profileSnap.exists()) {
+        return profileSnap.data() as UserProfile;
+    } else {
+        // Create a default profile if one doesn't exist
+        const newProfile: UserProfile = {
+            uid,
+            email,
+            name: displayName || 'New User',
+            ...defaultProfileData,
+        };
+        await setDoc(profileRef, newProfile);
+        return newProfile;
     }
-    // Create a default profile if one doesn't exist
-    const newProfile: UserProfile = {
-        uid,
-        email,
-        name: displayName || defaultProfile.name,
-        ...defaultProfile,
-    };
-    await updateProfileInFirestore(uid, newProfile);
-    return newProfile;
 }
 
 export async function updateProfileInFirestore(uid: string, data: Partial<UserProfile>): Promise<void> {
-    const profiles = getMockData<UserProfile>(MOCK_PROFILES_KEY);
-    profiles[uid] = { ...profiles[uid], ...data, uid };
-    setMockData(MOCK_PROFILES_KEY, profiles);
+    const profileRef = doc(db, 'profiles', uid);
+    await setDoc(profileRef, data, { merge: true });
 }
 
 
 // --- Resume Functions ---
 
-const mockResumes: Omit<Resume, 'id' | 'userId' | 'createdAt'>[] = [
-  {
-    title: 'Software Engineer at TechCorp',
-    jobDescription: 'Seeking a skilled software engineer...',
-    latexContent: `\\documentclass{article}
-\\begin{document}
-Software Engineer resume for TechCorp.
-\\end{document}`,
-    pdfDataUri: '',
-  },
-  {
-    title: 'Product Manager at Innovate Inc.',
-    jobDescription: 'Lead product development...',
-    latexContent: `\\documentclass{article}
-\\begin{document}
-Product Manager resume for Innovate Inc.
-\\end{document}`,
-    pdfDataUri: '',
-  },
-];
-
-
-async function initializeUserResumes(userId: string) {
-    const allResumes = getMockData<Resume>(MOCK_RESUMES_KEY);
-     // Check if user already has resumes to avoid re-adding them
-    const userResumesExist = Object.values(allResumes).some(resume => resume.userId === userId);
-
-    if (!userResumesExist) {
-        mockResumes.forEach((resumeData, index) => {
-            const newId = `${userId}-mock-${index + 1}`;
-            if (!allResumes[newId]) { // Add only if it doesn't exist
-                allResumes[newId] = {
-                    ...resumeData,
-                    id: newId,
-                    userId: userId,
-                    createdAt: new Date().toISOString(),
-                } as unknown as Resume;
-            }
-        });
-        setMockData(MOCK_RESUMES_KEY, allResumes);
-    }
-}
-
-
 export async function getResumesFromFirestore(userId: string): Promise<Resume[]> {
-    await initializeUserResumes(userId);
-    const resumes = getMockData<Resume>(MOCK_RESUMES_KEY);
-    return Object.values(resumes).filter(r => r.userId === userId);
+    const resumesCol = collection(db, 'resumes');
+    const q = query(resumesCol, where('userId', '==', userId));
+    const resumeSnapshot = await getDocs(q);
+    const resumeList = resumeSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            ...data,
+            createdAt: (data.createdAt as Timestamp).toDate().toISOString(),
+        } as Resume;
+    });
+    return resumeList;
 }
 
 export async function getResumeFromFirestore(id: string): Promise<Resume | null> {
-    const resumes = getMockData<Resume>(MOCK_RESUMES_KEY);
-    return resumes[id] || null;
+    const resumeRef = doc(db, 'resumes', id);
+    const resumeSnap = await getDoc(resumeRef);
+    if (!resumeSnap.exists()) {
+        return null;
+    }
+    const data = resumeSnap.data();
+    return {
+        id: resumeSnap.id,
+        ...data,
+        createdAt: (data.createdAt as Timestamp).toDate().toISOString(),
+    } as Resume;
 }
 
 export async function saveResumeToFirestore(resume: Omit<Resume, 'id' | 'createdAt'>, userId: string): Promise<Resume> {
-    const resumes = getMockData<Resume>(MOCK_RESUMES_KEY);
-    const newId = new Date().getTime().toString();
-    const newResume: Resume = {
+    const resumesCol = collection(db, 'resumes');
+    const newResumeData = {
         ...resume,
-        id: newId,
-        userId: userId,
-        createdAt: new Date().toISOString(),
-    } as unknown as Resume;
-    resumes[newId] = newResume;
-    setMockData(MOCK_RESUMES_KEY, resumes);
-    return newResume;
+        userId,
+        createdAt: Timestamp.fromDate(new Date()),
+    };
+    const docRef = await addDoc(resumesCol, newResumeData);
+    return {
+        id: docRef.id,
+        ...resume,
+        createdAt: new Date().toISOString(), // Return as ISO string
+    } as Resume;
 }
 
-export async function updateResumeInFirestore(id: string, data: Partial<Resume>): Promise<void> {
-    const resumes = getMockData<Resume>(MOCK_RESUMES_KEY);
-    if (resumes[id]) {
-        resumes[id] = { ...resumes[id], ...data };
-        setMockData(MOCK_RESUMES_KEY, resumes);
-    } else {
-        throw new Error("Resume not found");
-    }
+export async function updateResumeInFirestore(id:string, data: Partial<Omit<Resume, 'id'>>): Promise<void> {
+    const resumeRef = doc(db, 'resumes', id);
+    await updateDoc(resumeRef, data);
 }
