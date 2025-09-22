@@ -14,8 +14,6 @@ interface ResumePreviewProps {
 
 const ResumePreview: React.FC<ResumePreviewProps> = ({ latexContent }) => {
 
-  // This is a temporary fix to handle unsupported LaTeX commands by react-latex-next
-  // A more robust solution would be to use a different renderer or adjust the template
   const sanitizedLatex = latexContent
     // Remove document setup commands
     ?.replace(/\\documentclass\[.*?\]{.*?}/gs, '')
@@ -30,46 +28,52 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ latexContent }) => {
     .replace(/\\raggedright/gs, '')
     .replace(/\\setlength{.*?}{.*?}/gs, '')
 
-    // Replace structural commands with HTML
-    .replace(/\\begin{center}([\s\S]*?)\\end{center}/gs, '<div style="text-align: center;">$1</div>')
-    .replace(/\\resumeheader{(.*?)}/gs, '<h1>$1</h1>')
+    // Replace structural commands with HTML-like tags for parsing
+    .replace(/\\begin{center}([\s\S]*?)\\end{center}/gs, '<centerblock>$1</centerblock>')
+    .replace(/\\resumeheader{(.*?)}/gs, '<resumeheader>$1</resumeheader>')
     .replace(/\\resumecontact{([\s\S]*?)}/gs, (match, content) => {
         const lines = content.replace(/\\\\/g, '').trim().split('$|$').map(s => s.trim());
-        return `<p><small>${lines.join(' | ')}</small></p>`;
+        return `<resumecontact>${lines.join(' | ')}</resumecontact>`;
     })
-    .replace(/\\section{(.*?)}/gs, '<h2>$1</h2><hr/>')
-    
-    // Handle entry with bullets
+    .replace(/\\section{(.*?)}/gs, '<sectiontitle>$1</sectiontitle>')
     .replace(/\\entry{(.*?)}{(.*?)}{([\s\S]*?)}{.*?}/gs, (match, left, right, body) => {
-        const bullets = body.replace(/\\bullets{([\s\S]*?)}/gs, '<ul>$1</ul>')
-                           .replace(/\\item/g, '<li>');
-        return `<div><div style="display: flex; justify-content: space-between;"><b>${left}</b><span>${right}</span></div>${bullets}</div>`;
+        const bullets = body.replace(/\\bullets{([\s\S]*?)}/gs, '<bullets>$1</bullets>')
+                           .replace(/\\item/g, '<bulletitem>');
+        return `<entry><left>${left}</left><right>${right}</right><body>${bullets}</body></entry>`;
     })
-    
-    // Handle entry for education (with desc)
-     .replace(/\\entry{(.*?)}{(.*?)}\s*{\s*\\textbf{(.*?)}\s*}\s*{(.*?)}\s*\\vspace{.*?}\s*\\desc{(.*?)}/gs,
-        '<div><div style="display: flex; justify-content: space-between;"><b>$1</b><span>$4</span></div><div><b>$3</b></div><div>$5</div></div>'
+    .replace(/\\entry{(.*?)}{(.*?)}\s*{\s*\\textbf{(.*?)}\s*}\s*{(.*?)}\s*\\vspace{.*?}\s*\\desc{(.*?)}/gs,
+        '<entry><left>$1</left><right>$4</right><body><degree>$3</degree><description>$5</description></body></entry>'
     )
+    .replace(/\\singlelineentry{(.*?)}{([\s\S]*?)}/gs, '<singlelineentry><left>$1</left><right>$2</right></singlelineentry>')
+    .replace(/\\bullets{([\s\S]*?)}/gs, '<bullets>$1</bullets>')
+    .replace(/\\desc{(.*?)}/gs, '<description>$1</description>')
+    .replace(/\\item/g, '<bulletitem>')
     
-    .replace(/\\singlelineentry{(.*?)}{((?:.|\n)*?)}/gs, '<div><div style="display: flex; justify-content: space-between;"><b>$1</b><a href="$2" target="_blank" rel="noopener noreferrer">$2</a></div></div>')
-
-    // General list handling
-    .replace(/\\bullets{([\s\S]*?)}/gs, '<ul>$1</ul>')
-    .replace(/\\desc{(.*?)}/gs, '<div>$1</div>')
-    .replace(/\\item/g, '<li>')
-    .replace(/\\end{itemize}/g, '</ul>')
-    .replace(/\\begin{itemize}.*?\]/g, '<ul>')
-    
-
     // Cleanup remaining formatting commands
-    .replace(/\\hrule/g, '<hr/>')
+    .replace(/\\hrule/g, '<hr />')
     .replace(/\\hfill/g, '')
+    .replace(/\\textbf{(.*?)}/g, '<b>$1</b>')
     .replace(/\\bfseries/g, '')
     .replace(/\\scshape/g, '')
     .replace(/\\color{.*?}/g, '')
     .replace(/\\\\\[.*?\]/g, '<br/>')
     .replace(/\\vspace{.*?}/g, '')
-    .replace(/\\\\/g, '<br/>');
+    .replace(/\\\\/g, '<br/>')
+
+    // Convert custom tags to final HTML
+    .replace(/<centerblock>([\s\S]*?)<\/centerblock>/g, '<div style="text-align: center;">$1</div>')
+    .replace(/<resumeheader>(.*?)<\/resumeheader>/g, '<h1>$1</h1>')
+    .replace(/<resumecontact>(.*?)<\/resumecontact>/g, '<p><small>$1</small></p>')
+    .replace(/<sectiontitle>(.*?)<\/sectiontitle>/g, '<h2>$1</h2><hr/>')
+    .replace(/<entry>([\s\S]*?)<\/entry>/g, '<div>$1</div>')
+    .replace(/<left>(.*?)<\/left>/g, '<div style="display: flex; justify-content: space-between;"><b>$1</b>')
+    .replace(/<right>(.*?)<\/right>/g, '<span>$1</span></div>')
+    .replace(/<body>([\s\S]*?)<\/body>/g, '<div>$1</div>')
+    .replace(/<bullets>([\s\S]*?)<\/bullets>/g, '<ul>$1</ul>')
+    .replace(/<bulletitem>/g, '<li>')
+    .replace(/<degree>(.*?)<\/degree>/g, '<div><b>$1</b></div>')
+    .replace(/<description>(.*?)<\/description>/g, '<div>$1</div>')
+    .replace(/<singlelineentry><left>(.*?)<\/left><right>(.*?)<\/right><\/singlelineentry>/g, '<div><div style="display: flex; justify-content: space-between;"><b>$1</b><span style="word-break: break-all;">$2</span></div></div>');
 
 
   return (
