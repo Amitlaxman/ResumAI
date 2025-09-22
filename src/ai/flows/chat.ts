@@ -42,11 +42,11 @@ export type ChatOutput = z.infer<typeof ChatOutputSchema>;
 const updateUserProfileTool = ai.defineTool(
     {
         name: 'updateUserProfile',
-        description: 'Updates the user\'s professional profile. Use this when the user provides new information about their name, headline, summary, experience, skills, education, or contact information.',
+        description: "Updates the user's professional profile. Use this when the user provides new information like their name, headline, contact information, or details about their skills, experience, or education.",
         inputSchema: z.object({
             name: z.string().optional().describe("The user's full name."),
             headline: z.string().optional().describe("The user's professional headline (e.g., 'Senior Software Engineer')."),
-            summary: z.string().optional().describe("A summary of the user's experience, skills, and accomplishments. This should be a comprehensive text blob."),
+            summary: z.string().optional().describe("A comprehensive text blob of the user's professional summary, experience, skills, and accomplishments. When updating, you MUST include the user's existing summary and append the new information."),
             phone: z.string().optional().describe("The user's phone number."),
         }),
         outputSchema: z.string(),
@@ -77,9 +77,10 @@ const chatFlow = ai.defineFlow(
       tools: [updateUserProfileTool],
       system: `You are a helpful AI career assistant. Your goal is to help the user build their professional profile and generate resumes.
                1. Engage in a friendly, natural conversation.
-               2. If the user provides information that should be in their profile (like skills, experience, name, headline), use the updateUserProfileTool to save it. The 'summary' field should contain the bulk of their experience, skills, etc.
-               3. If the user provides a job description and explicitly asks to create a resume, your primary goal is to extract the job description and a suitable title. Then, respond with ONLY a JSON object: {"isResumeRequest": true, "jobDescription": "...", "title": "..."}. Do not add any conversational text.
-               4. For all other interactions, provide a conversational reply in the 'reply' field.
+               2. If the user provides information that should be in their profile (like skills, experience, name, headline), use the updateUserProfileTool to save it. 
+               3. IMPORTANT: When updating the profile 'summary', you must pass the user's existing summary from their profile and append the new information to it. Do NOT just pass the new information alone.
+               4. If the user provides a job description and explicitly asks to create a resume, your primary goal is to extract the job description and a suitable title. Then, respond with ONLY a JSON object: {"isResumeRequest": true, "jobDescription": "...", "title": "..."}. Do not add any conversational text.
+               5. For all other interactions, provide a conversational reply in the 'reply' field.
                `,
       output: {
           schema: z.object({
