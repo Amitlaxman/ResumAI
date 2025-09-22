@@ -26,7 +26,6 @@ export interface Resume {
   title: string;
   jobDescription: string;
   latexContent: string;
-  pdfDataUri?: string;
   createdAt: string; // Stored as ISO string
 }
 

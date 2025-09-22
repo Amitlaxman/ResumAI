@@ -1,100 +1,70 @@
 
 "use client";
 
-import React, { useEffect, useRef, useState } from 'react';
+import React from 'react';
+import Latex from 'react-latex-next';
+import 'katex/dist/katex.min.css';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
+
 
 interface ResumePreviewProps {
-  pdfDataUri?: string;
+  latexContent?: string;
 }
 
-const ResumePreview: React.FC<ResumePreviewProps> = ({ pdfDataUri }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+const ResumePreview: React.FC<ResumePreviewProps> = ({ latexContent }) => {
 
-  useEffect(() => {
-    let pdfDoc: any = null;
-    let isCancelled = false;
-  
-    const renderPdf = async () => {
-      setLoading(true);
-      setError(null);
+  // This is a temporary fix to handle unsupported LaTeX commands by react-latex-next
+  // A more robust solution would be to use a different renderer or adjust the template
+  const sanitizedLatex = latexContent
+    ?.replace(/\\documentclass\[.*?\]{.*?}/g, '')
+    .replace(/\\usepackage{.*?}/g, '')
+    .replace(/\\begin{document}/g, '')
+    .replace(/\\end{document}/g, '')
+    .replace(/\\pagestyle{.*?}/g, '')
+    .replace(/\\newcounter{.*?}/g, '')
+    .replace(/\\hypersetup{.*?}/g, '')
+    .replace(/\\urlstyle{.*?}/g, '')
+    .replace(/\\raggedbottom/g, '')
+    .replace(/\\raggedright/g, '')
+    .replace(/\\setlength{.*?}{.*?}/g, '')
+    .replace(/\\hrule/g, '<hr/>')
+    .replace(/\\hfill/g, '<span style="float: right;">') // This won't work as expected in all cases
+    .replace(/\\bfseries/g, '')
+    .replace(/\\scshape/g, '')
+    .replace(/\\color{.*?}/g, '')
+    .replace(/\\resumeheader{(.*?)}/g, '<h1>$1</h1>')
+    .replace(/\\resumecontact{(.*?)}/g, '<p><small>$1</small></p>')
+    .replace(/\\section{(.*?)}/g, '<h2>$1</h2><hr/>')
+    .replace(/\\entry{(.*?)}{(.*?)}{((?:.|\n)*?)}{.*?}/g, '<div><b>$1</b><span style="float: right;">$2</span><br/>$3</div>')
+    .replace(/\\singlelineentry{(.*?)}{(.*?)}/g, '<div><b>$1</b><span style="float: right;">$2</span></div>')
+    .replace(/\\desc{(.*?)}/g, '<ul><li>$1</li></ul>')
+    .replace(/\\bullets{((?:.|\n)*?)}/g, '<ul>$1</ul>')
+    .replace(/\\item/g, '<li>')
+    .replace(/\\end{itemize}/g, '</ul>')
+    .replace(/\\begin{itemize}.*?\]/g, '<ul>')
+    .replace(/\\\\\[.*?\]/g, '<br/>')
+    .replace(/\\vspace{.*?}/g, '');
 
-      if (!pdfDataUri) {
-        setError("No PDF data to display.");
-        setLoading(false);
-        return;
-      }
-      
-      try {
-        await (window as any).pdfjsLibReady.promise;
-        const pdfjsLib = (window as any).pdfjsLib;
-
-        const base64Data = pdfDataUri.split(',')[1];
-        const pdfData = atob(base64Data);
-        const uint8Array = new Uint8Array(pdfData.length);
-        for (let i = 0; i < pdfData.length; i++) {
-          uint8Array[i] = pdfData.charCodeAt(i);
-        }
-        
-        const loadingTask = pdfjsLib.getDocument({ data: uint8Array });
-        pdfDoc = await loadingTask.promise;
-
-        if (isCancelled) return;
-
-        const page = await pdfDoc.getPage(1);
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-
-        const viewport = page.getViewport({ scale: 2 });
-        const context = canvas.getContext('2d');
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
-
-        const renderContext = {
-          canvasContext: context,
-          viewport: viewport
-        };
-        await page.render(renderContext).promise;
-        
-        setLoading(false);
-      } catch (err: any) {
-        if (!isCancelled) {
-          console.error('Failed to render PDF', err);
-          setError(err.message || 'An error occurred while rendering the PDF.');
-          setLoading(false);
-        }
-      }
-    };
-
-    renderPdf();
-
-    return () => {
-      isCancelled = true;
-      if (pdfDoc) {
-        // pdfDoc.destroy();
-      }
-    };
-  }, [pdfDataUri]);
 
   return (
     <Card className="h-full flex flex-col">
       <CardHeader>
         <CardTitle className="font-headline">Preview</CardTitle>
-        <CardDescription>A live preview of your rendered resume.</CardDescription>
+        <CardDescription>A live preview of your resume. Note: This is not a PDF, but a web-based rendering of the LaTeX code.</CardDescription>
       </CardHeader>
-      <CardContent className="flex-grow bg-muted/50 rounded-b-lg p-4 overflow-auto flex items-center justify-center">
-        {loading && <Loader2 className="h-8 w-8 animate-spin text-primary" />}
-        {error && !loading && (
-          <div className="text-center text-destructive">
+      <CardContent className="flex-grow bg-white rounded-b-lg p-6 overflow-auto text-black">
+        {latexContent ? (
+           <div className="prose prose-sm max-w-none">
+             <Latex>{sanitizedLatex || ''}</Latex>
+           </div>
+        ) : (
+          <div className="text-center text-gray-500">
             <AlertTriangle className="mx-auto h-12 w-12" />
-            <h3 className="mt-4 text-lg font-medium">Preview Failed</h3>
-            <p className="mt-1 text-sm">{error}</p>
+            <h3 className="mt-4 text-lg font-medium">No Content to Display</h3>
+            <p className="mt-1 text-sm">The LaTeX content is empty.</p>
           </div>
         )}
-        <canvas ref={canvasRef} className={`${loading || error ? 'hidden' : 'block'} max-w-full h-auto shadow-lg`} />
       </CardContent>
     </Card>
   );

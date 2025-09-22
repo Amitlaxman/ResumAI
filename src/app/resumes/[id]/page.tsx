@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -16,7 +16,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Save, Download, ArrowLeft } from 'lucide-react';
 import type { Resume } from '@/types';
-import { generatePdfFromLatex } from '@/ai/flows/generate-pdf-from-latex';
 import { getResumeFromFirestore, updateResumeInFirestore } from '@/lib/firestore';
 
 
@@ -29,7 +28,6 @@ const ResumePreview = dynamic(() => import('@/components/resume/ResumePreview'),
 const resumeSchema = z.object({
   title: z.string().min(5, { message: 'Title must be at least 5 characters.' }),
   latexContent: z.string().min(1, { message: 'LaTeX content cannot be empty.' }),
-  pdfDataUri: z.string().optional(),
 });
 
 type ResumeFormValues = z.infer<typeof resumeSchema>;
@@ -41,7 +39,6 @@ export default function ResumePage() {
   const { toast } = useToast();
   const [resume, setResume] = useState<Resume | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [isCompiling, setIsCompiling] = useState(false);
   
   const id = params.id as string;
 
@@ -50,33 +47,8 @@ export default function ResumePage() {
     defaultValues: {
       title: '',
       latexContent: '',
-      pdfDataUri: '',
     },
   });
-
-  const handleCompile = async (latexContent: string) => {
-    setIsCompiling(true);
-    toast({ title: 'Compiling PDF...', description: 'Please wait.' });
-    try {
-        const { pdfDataUri } = await generatePdfFromLatex({ latexContent });
-        if (!pdfDataUri) {
-          toast({ variant: 'destructive', title: 'Compilation Failed', description: 'The PDF compilation service is currently unreachable. Please try again later.' });
-          // Set empty URI so preview component can show error state
-          form.setValue('pdfDataUri', '');
-        } else {
-          form.setValue('pdfDataUri', pdfDataUri);
-          await updateResumeInFirestore(id, { pdfDataUri });
-          setResume(prev => prev ? { ...prev, pdfDataUri } : null);
-          toast({ title: 'PDF Compiled!', description: 'The preview has been updated.' });
-        }
-    } catch (error: any) {
-        console.error(error);
-        toast({ variant: 'destructive', title: 'Compilation Failed', description: error.message || 'Could not compile the PDF.' });
-    } finally {
-        setIsCompiling(false);
-    }
-  }
-
 
   useEffect(() => {
     if (!loading && !user) {
@@ -93,14 +65,7 @@ export default function ResumePage() {
                 form.reset({
                     title: fetchedResume.title,
                     latexContent: fetchedResume.latexContent,
-                    pdfDataUri: fetchedResume.pdfDataUri,
                 });
-
-                // If PDF data is missing, compile it now.
-                if (!fetchedResume.pdfDataUri && fetchedResume.latexContent) {
-                  await handleCompile(fetchedResume.latexContent);
-                }
-
             } else {
                 toast({ variant: 'destructive', title: 'Error', description: 'Could not load resume data.' });
                 router.push('/dashboard');
@@ -108,8 +73,7 @@ export default function ResumePage() {
         };
         fetchResume();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, id, router, toast]);
+  }, [user, id, router, toast, form]);
   
   async function onSave(data: ResumeFormValues) {
     if (!user || !resume) return;
@@ -117,10 +81,8 @@ export default function ResumePage() {
     toast({ title: 'Saving resume...' });
 
     try {
-      // Intentionally not saving pdfDataUri here as it's generated on demand
-      const { pdfDataUri, ...saveData } = data;
-      await updateResumeInFirestore(id, saveData);
-      setResume(prev => prev ? { ...prev, ...saveData } : null);
+      await updateResumeInFirestore(id, data);
+      setResume(prev => prev ? { ...prev, ...data } : null);
       
       toast({ title: 'Resume Saved!', description: 'Your changes have been saved.' });
     } catch (error) {
@@ -129,29 +91,6 @@ export default function ResumePage() {
       setIsSaving(false);
     }
   }
-
-  const handleRecompile = async () => {
-    const latexContent = form.getValues('latexContent');
-    await handleCompile(latexContent);
-  }
-
-  const handleDownloadPdf = () => {
-    const pdfDataUri = form.getValues('pdfDataUri');
-    if (pdfDataUri) {
-      const link = document.createElement('a');
-      link.href = pdfDataUri;
-      link.download = `${form.getValues('title').replace(/ /g, '_').toLowerCase()}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } else {
-       toast({
-        variant: "destructive",
-        title: "Error",
-        description: "No PDF data available to download. Please compile the resume first.",
-      });
-    }
-  };
 
   const handleDownloadTex = () => {
     const content = form.getValues('latexContent');
@@ -199,13 +138,6 @@ export default function ResumePage() {
                <Button type="button" variant="outline" onClick={handleDownloadTex}>
                 <Download className="mr-2 h-4 w-4" /> Download .tex
               </Button>
-              <Button type="button" variant="outline" onClick={handleDownloadPdf}>
-                <Download className="mr-2 h-4 w-4" /> Download PDF
-              </Button>
-               <Button type="button" onClick={handleRecompile} disabled={isCompiling}>
-                {isCompiling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Recompile PDF
-              </Button>
               <Button type="submit" disabled={isSaving}>
                 {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 <Save className="mr-2 h-4 w-4" /> Save All
@@ -232,7 +164,7 @@ export default function ResumePage() {
               )}
             />
             
-            <ResumePreview pdfDataUri={form.watch('pdfDataUri')} />
+            <ResumePreview latexContent={form.watch('latexContent')} />
 
           </div>
         </form>
