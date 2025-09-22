@@ -25,7 +25,7 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro&display=swap" rel="stylesheet" />
-        <Script src="https://unpkg.com/latex.js@0.12.6/dist/latex.js" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" integrity="sha384-KiK6/LqSooU13iT+a3m2b2lQ2+i43x9ROeH9vU6whux282c/1S1V4D5G3x9hI3vB" crossOrigin="anonymous" />
       </head>
       <body className={cn("font-body antialiased", "min-h-screen flex flex-col")}>
         <AuthProvider>
