@@ -86,13 +86,14 @@ export default function ResumePage() {
         const fetchResume = async () => {
             const fetchedResume = await getResumeFromFirestore(id);
             if (fetchedResume) {
-                 const formattedResume = {
+                 const createdAtDate = fetchedResume.createdAt && typeof (fetchedResume.createdAt as any).toDate === 'function' 
+                    ? (fetchedResume.createdAt as any).toDate() 
+                    : new Date(fetchedResume.createdAt as any);
+                const formattedResume = {
                     ...fetchedResume,
-                    // @ts-ignore
-                    createdAt: fetchedResume.createdAt.toDate ? fetchedResume.createdAt.toDate() : new Date(fetchedResume.createdAt)
+                    createdAt: createdAtDate,
                 };
-                // @ts-ignore
-                setResume(formattedResume);
+                setResume(formattedResume as unknown as Resume);
                 form.reset({
                     title: formattedResume.title,
                     latexContent: formattedResume.latexContent,

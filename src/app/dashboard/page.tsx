@@ -27,13 +27,16 @@ export default function DashboardPage() {
     if (user) {
       const fetchResumes = async () => {
         const userResumes = await getResumesFromFirestore(user.uid);
-        // Quick fix for createdAt type mismatch
-        const formattedResumes = userResumes.map(r => ({
-          ...r,
-          createdAt: r.createdAt.toDate ? r.createdAt.toDate() : new Date(r.createdAt as any)
-        }));
-        // @ts-ignore
-        setResumes(formattedResumes);
+        const formattedResumes = userResumes.map(r => {
+          const createdAtDate = r.createdAt && typeof (r.createdAt as any).toDate === 'function' 
+            ? (r.createdAt as any).toDate() 
+            : new Date(r.createdAt as any);
+          return {
+            ...r,
+            createdAt: createdAtDate,
+          };
+        });
+        setResumes(formattedResumes as unknown as Resume[]);
       };
       fetchResumes();
     }
@@ -68,8 +71,7 @@ export default function DashboardPage() {
                     <CardTitle className="hover:text-primary">
                       <Link href={`/resumes/${resume.id}`}>{resume.title}</Link>
                     </CardTitle>
-                    {/* @ts-ignore */}
-                    <CardDescription>Created on {resume.createdAt.toLocaleDateString()}</CardDescription>
+                    <CardDescription>Created on {(resume.createdAt as unknown as Date).toLocaleDateString()}</CardDescription>
                   </div>
                    <DropdownMenu>
                     <DropdownMenuTrigger asChild>
