@@ -61,23 +61,14 @@ const generatePdfFromLatexFlow = ai.defineFlow(
   },
   async ({ latexContent }) => {
     
-    const { output } = await ai.generate({
-        prompt: `Compile the following LaTeX content into a PDF: ${latexContent}`,
-        tools: [compileLatexTool],
-        config: {
-            // @ts-ignore
-            toolChoice: "required", 
-        }
-    });
+    // Instead of forcing a tool, we can just call it directly since that's all this flow does.
+    const toolResponse = await compileLatexTool({ latex: latexContent });
 
-    const toolResponse = output?.history.find(m => m.role === 'tool');
-    const pdfDataUri = toolResponse?.content[0].data.pdfDataUri;
-
-    if (!pdfDataUri) {
-        throw new Error('PDF generation failed. No tool response found.');
+    if (!toolResponse.pdfDataUri) {
+        throw new Error('PDF generation failed. The compilation tool returned an empty response.');
     }
     
-    return { pdfDataUri };
+    return { pdfDataUri: toolResponse.pdfDataUri };
   }
 );
 
