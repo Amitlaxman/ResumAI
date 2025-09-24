@@ -99,12 +99,12 @@ export default function Home() {
           </div>
           <div className="rounded-lg overflow-hidden shadow-2xl">
             <Image
-              src="https://picsum.photos/seed/chatbot-resume/600/400"
+              src="https://images.unsplash.com/photo-1586281380349-632531db7ed4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxyZXN1bWV8ZW58MHx8fHwxNzU4NzMyMjEzfDA&ixlib=rb-4.1.0&q=80&w=1080"
               alt="Resume chatbot interface"
               width={600}
               height={400}
               className="w-full h-auto"
-              data-ai-hint="chatbot ui"
+              data-ai-hint="resume"
             />
           </div>
         </div>
