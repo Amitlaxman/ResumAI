@@ -80,3 +80,26 @@ You can now access the application in your browser and start building your profi
 - `src/lib/`: Core utility functions, Firebase configuration, and Firestore interactions.
 - `src/hooks/`: Custom React hooks used throughout the application.
 - `public/`: Static assets.
+
+## Team Contributions
+
+This project was brought to life through a collaborative effort. Here’s a breakdown of who did what:
+
+### Amit: Backend & AI Engineering
+
+Amit was the primary architect of the backend systems and AI logic. His responsibilities included:
+
+- **AI Flow Development**: Designed and implemented the core Genkit flows for the conversational AI, including profile updates and resume generation (`chat.ts`, `generate-resume-from-profile.ts`).
+- **Prompt Engineering**: Crafted and refined the system prompts used by the Gemini model to ensure high-quality, structured output for both conversational replies and LaTeX resume code.
+- **Database Integration**: Developed the data models and wrote the server-side logic in `src/lib/firestore.ts` to connect the application to Firebase Firestore, managing all CRUD operations for user profiles and resumes.
+- **Tooling and Server Logic**: Built the Genkit tools, such as `updateUserProfileTool`, to give the AI the ability to interact with the database, forming the backbone of the agentic behavior.
+
+### Mariya: Frontend & UI/UX Development
+
+Mariya led the development of the user interface and overall user experience. Her key contributions include:
+
+- **UI/UX Design**: Designed the application's look and feel, ensuring a clean, modern, and intuitive user journey.
+- **Component Implementation**: Built and styled all the frontend components using Next.js, React, ShadCN UI, and Tailwind CSS. This includes the main dashboard, chat interface, profile editor, and the resume preview page.
+- **Client-Side Logic**: Wrote the client-side TypeScript code to handle user authentication, state management (using React Hooks and Context), form submissions, and all interactions with the backend AI flows.
+- **Frontend & Firebase Integration**: Connected the UI components to the Firebase backend, ensuring seamless data flow from user interactions to the database and back.
+- **Resume Preview**: Implemented the live LaTeX preview component, including the complex logic required to parse and render the resume structure in the browser.
